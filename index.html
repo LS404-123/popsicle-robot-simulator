@@ -629,11 +629,23 @@ h3 { font-size: 1.15rem; }
     invalidateCycle();
     status.textContent=result.jammed?(result.reason==='limit'?'P 已到轉角限制，O 停下':'圓銷受阻，O 停在接觸位置'):(result.touching?'移動 O · Q 推動白棍':'移動 O · Q 未接觸白棍');
   }
+  // GitHub 共用初始配置；從目前頁面記錄，本機有效配置仍優先。
+  const publishedInitial={
+    version:13,angle:-9.8,crankAngle:-2336.76,
+    design:{
+      hookAngle:133.8,pivotT:54.1,beamT:38,
+      join1:39.1,join2:38.2,angle2:-45.5,
+      beamX:123.6,beamY:106,beamAngle:9.49,
+      crankX:121.56818475836813,crankY:44.01606536134669,
+      crankLength:21,pinRadius:1.5,crankAngle:90,crankRPM:30,
+      rotationMin:-9.8,rotationMax:50
+    }
+  };
   function restore(snapshot){
-    const saved=snapshot?.modelContent;
-    // 舊快照不覆蓋使用者指定的新初始配置；其後的調整仍會保留。
-    const compatible=[10,11,12,13].includes(saved?.version),degrees=compatible?saved.angle:0;
-    design=migrateDesign(compatible?saved.design:designDefaults,saved?.version);rebuild();
+    const supplied=snapshot?.modelContent;
+    const saved=[10,11,12,13].includes(supplied?.version)?supplied:publishedInitial;
+    const degrees=saved.angle;
+    design=migrateDesign(saved.design,saved.version);rebuild();
     const key=snapshot?.privateContent?.control;
     activeControl=Object.prototype.hasOwnProperty.call(controlHints,key)?key:'rotationMin';
     state=limitRotation([Number.isFinite(degrees)?degrees/180*Math.PI:0,0],model);elapsed=0;
