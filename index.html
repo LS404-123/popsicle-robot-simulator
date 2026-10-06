@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>雪條棍機械人模擬</title>
+<style>
+:root {
+  color-scheme: dark;
+  --background: #18191b;
+  --surface: #202123;
+  --foreground: #f4f4f5;
+  --muted-foreground: #aeb1b8;
+  --border: #36383c;
+  --input: #51545b;
+  --blue: #72b6ff;
+  --orange: #ff9557;
+  --green: #5eda91;
+  --red: #ff7777;
+  --purple: #c2a0ff;
+  --font-size-base: 20px;
+  font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 18px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); line-height: 1.5; }
+button, input { font: inherit; color: inherit; }
+button, input[type="range"], summary { cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; }
+::selection { background: var(--purple); color: var(--background); }
+h1, h3 { margin: 0; font-weight: 600; line-height: 1.35; }
+h1 { font-size: 1.5rem; }
+h3 { font-size: 1.15rem; }
+[hidden] { display: none !important; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.text-small { font-size: .875rem; }
+.text-muted { color: var(--muted-foreground); }
+#rubber-arm-simulation { min-height: 100svh; }
+.simulation-toolbar { padding: 20px 32px; border-bottom: 1px solid var(--border); }
+.workbench-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px 32px; }
+.viz-controls, .viz-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.rotation-controls { margin-top: 16px; }
+.cycle-analysis { max-width: 960px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.cycle-analysis summary { width: fit-content; min-height: 44px; padding-block: 8px; font-size: 1.15rem; font-weight: 600; }
+.cycle-content { display: grid; gap: 12px; padding-block: 12px; }
+.cycle-analysis p, .cycle-ranges { margin: 0; }
+.cycle-track { position: relative; min-height: 24px; background: var(--surface); border: 1px solid var(--border); }
+.cycle-segments { display: grid; gap: 6px; padding-block: 6px; }
+.cycle-lane { position: relative; height: 12px; background: var(--border); }
+.cycle-lane span { position: absolute; height: 100%; min-width: 2px; }
+.cycle-marker { position: absolute; inset-block: -4px; width: 2px; background: var(--foreground); }
+.cycle-axis { display: flex; justify-content: space-between; color: var(--muted-foreground); }
+.cycle-ranges { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 8px 16px; }
+.cycle-ranges dd { margin: 0; overflow-wrap: anywhere; }
+[data-phase="contact"] { color: var(--purple); }
+[data-phase="return"] { color: var(--orange); }
+#rubber-sim-status { color: var(--muted-foreground); }
+.btn { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-weight: 500; }
+.btn:hover:enabled { background: #303237; }
+.btn:active:enabled { background: #3a3c43; }
+.btn-primary { border-color: var(--foreground); background: var(--foreground); color: var(--background); }
+.btn-primary:hover:enabled { background: #d8d9dc; }
+.btn-primary:active:enabled { background: #c2c4c8; }
+.simulation-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; align-items: stretch; }
+.simulation-preview { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 24px 32px; }
+.mechanism { display: block; width: 100%; overflow: hidden; }
+.mechanism text { fill: var(--muted-foreground); font-size: var(--font-size-base); font-weight: 400; }
+.mechanism text.primary-label { fill: var(--foreground); }
+.mechanism g[data-control] { opacity: .65; }
+.mechanism [data-crank-handle], .mechanism [data-crank-center-handle] { touch-action: none; cursor: grab; }
+.mechanism[data-dragging="true"], .mechanism[data-dragging="true"] [data-crank-handle], .mechanism[data-dragging="true"] [data-crank-center-handle] { cursor: grabbing; }
+.position-controls { display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 24px; background: var(--surface); border-left: 1px solid var(--border); }
+.component-selector { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.component-selector .btn { padding-inline: 8px; font-size: .9rem; text-align: left; }
+.component-selector .btn[aria-pressed="true"] { border-color: #8e9098; background: #36383e; }
+.control-stack { display: grid; gap: 28px; }
+.control-field { display: grid; gap: 12px; min-width: 0; }
+.control-heading { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto; align-items: start; gap: 8px; }
+.control-value { text-align: end; white-space: nowrap; }
+.control-dot { width: 6px; height: 6px; align-self: center; border-radius: 50%; background: var(--blue); visibility: hidden; }
+[data-guides="true"] .control-field[data-selected="true"] .control-dot { visibility: visible; }
+.form-label { display: block; }
+.form-control { display: block; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 12px; border: 1px solid var(--input); border-radius: 6px; background: var(--background); caret-color: var(--purple); font-variant-numeric: tabular-nums; }
+.form-range { display: block; width: 100%; height: 32px; margin: 0; padding: 0; background: transparent; appearance: none; }
+.form-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--input); }
+.form-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%; background: var(--foreground); appearance: none; }
+.form-range::-moz-range-track { height: 4px; border-radius: 2px; background: var(--input); }
+.form-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--foreground); }
+.dual-range { display: grid; align-items: center; min-height: 32px; }
+.dual-range .range-track { grid-area: 1/1; height: 4px; background: var(--input); }
+.dual-range .range-track div { height: 100%; background: var(--foreground); }
+.dual-range input { grid-area: 1/1; pointer-events: none; position: relative; }
+.dual-range input:focus { z-index: 2; }
+.dual-range input::-webkit-slider-runnable-track { background: transparent; }
+.dual-range input::-moz-range-track { background: transparent; }
+.dual-range input::-webkit-slider-thumb { pointer-events: auto; }
+.dual-range input::-moz-range-thumb { pointer-events: auto; }
+#rubber-sim-focus-hint { padding-top: 20px; border-top: 1px solid var(--border); }
+#rubber-sim-values { color: var(--foreground); }
+.model-notes { margin-top: 8px; color: var(--muted-foreground); }
+.model-notes summary { width: fit-content; padding-block: 8px; }
+.model-notes div { max-width: 75ch; margin-top: 8px; }
+@media (min-width: 1600px) { .simulation-layout { grid-template-columns: minmax(0, 1fr) 420px; } .position-controls { padding: 32px; } }
+@media (max-width: 1099px) {
+  .simulation-layout { grid-template-columns: minmax(0, 1fr); }
+  .position-controls { border-left: 0; border-top: 1px solid var(--border); padding: 24px 32px; }
+  .component-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 28px 32px; }
+  #rubber-sim-pivot-controls .control-field:first-child { grid-column: 1/-1; }
+  #rubber-sim-crank-controls > .text-small { align-self: center; }
+}
+@media (max-width: 599px) {
+  :root { font-size: 16px; }
+  .simulation-toolbar, .simulation-preview, .position-controls { padding: 20px 16px; }
+  .workbench-heading { gap: 16px; }
+  .viz-controls { gap: 8px; }
+  #rubber-sim-status { flex-basis: 100%; }
+  .btn { padding-inline: 12px; }
+  .component-selector, .control-stack { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .control-stack { grid-template-columns: minmax(0, 1fr); }
+}
+@media (pointer: coarse) { .form-range, .dual-range { min-height: 44px; } }
+</style>
+</head>
+<body>
+<main id="rubber-arm-simulation">
+  <header class="simulation-toolbar">
+    <div class="workbench-heading">
+      <h1>雪條棍機械人模擬</h1>
+      <div class="viz-controls">
+        <button class="btn" id="rubber-sim-play" type="button">放手</button>
+        <button class="btn" id="rubber-sim-home" type="button">還原配置</button>
+        <button class="btn" id="rubber-sim-store-initial" type="button">設為初始配置</button>
+      </div>
+    </div>
+    <div class="viz-controls rotation-controls">
+      <button class="btn btn-primary" id="rubber-sim-drive" type="button">啟動曲柄</button>
+      <button class="btn" id="rubber-sim-analyze" type="button" aria-controls="rubber-sim-cycle-panel" aria-expanded="false">分析一圈</button>
+      <span class="text-small" id="rubber-sim-status" aria-live="polite">待放手 · 慢速 0.25×</span>
+    </div>
+      <details class="cycle-analysis" id="rubber-sim-cycle-panel">
+        <summary id="rubber-sim-cycle-heading">白棍繞 P 的角度與掃過範圍</summary>
+        <div class="cycle-content">
+        <p class="text-small text-muted" id="rubber-sim-cycle-note" aria-live="polite">按「分析一圈」計算目前配置。</p>
+        <div class="cycle-track" id="rubber-sim-cycle-track" role="img" aria-label="白棍繞 P 的角度範圍，尚未分析">
+          <div class="cycle-segments" id="rubber-sim-cycle-segments"></div>
+          <div class="cycle-marker" id="rubber-sim-cycle-marker" hidden></div>
+        </div>
+        <div class="cycle-axis text-small tabular-nums" aria-hidden="true"><span>−50°</span><span>−25°</span><span>0°</span><span>25°</span><span>50°</span></div>
+        <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
+        </div>
+      </details>
+  </header>
+  <div class="simulation-layout">
+    <section class="simulation-preview" aria-label="機構預覽">
+      <div class="viz-row text-small"><span class="text-muted">固定件</span><span>活動棍 1／2</span><span class="text-muted">橡筋</span><span style="color:var(--purple)">曲柄 O–Q</span></div>
+      <svg class="mechanism" role="img" aria-label="可調位置的雪條棍機構，兩棍固定接合並共同繞樞軸旋轉"></svg>
+      <div class="tabular-nums text-small" id="rubber-sim-values"></div>
+
+      <div class="text-small text-muted">三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</div>
+  <details class="model-notes"><summary>模擬參數與假設</summary><div class="text-small text-muted">示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</div></details>
+    </section>
+    <section class="position-controls" aria-labelledby="rubber-sim-settings-heading">
+    <div class="component-selector" role="group" aria-label="選擇圖中要調整的部件">
+      <button class="btn" id="rubber-sim-select-beam" type="button" aria-pressed="false" aria-controls="rubber-sim-beam-controls">G 綠棍中心</button>
+      <button class="btn" id="rubber-sim-select-hook" type="button" aria-pressed="false" aria-controls="rubber-sim-hook-controls">A 黏合棍</button>
+      <button class="btn" id="rubber-sim-select-pivot" type="button" aria-pressed="true" aria-controls="rubber-sim-pivot-controls">P 樞軸</button>
+      <button class="btn" id="rubber-sim-select-joint" type="button" aria-pressed="false" aria-controls="rubber-sim-joint-controls">J 接合與橡筋</button>
+      <button class="btn" id="rubber-sim-select-whole" type="button" aria-pressed="false" aria-controls="rubber-sim-whole-controls">整體轉動</button>
+      <button class="btn" id="rubber-sim-select-crank" type="button" aria-pressed="false" aria-controls="rubber-sim-crank-controls">O 曲柄</button>
+    </div>
+      <h3 id="rubber-sim-settings-heading">P 樞軸與轉角範圍</h3>
+      <div class="control-stack" id="rubber-sim-beam-controls" hidden></div>
+      <div class="control-stack" id="rubber-sim-hook-controls" hidden></div>
+      <div class="control-stack" id="rubber-sim-pivot-controls">
+        <div class="control-field" id="rubber-sim-limits-field">
+          <div class="control-heading"><span class="control-dot" aria-hidden="true"></span><span>P 可轉動角度</span><output id="rubber-sim-limits-value" class="tabular-nums"></output></div>
+          <div class="dual-range">
+            <div class="range-track" aria-hidden="true"><div id="rubber-sim-range-window"></div></div>
+            <input class="form-range" id="rubber-sim-rotationMin" type="range" min="-50" max="50" step="0.1" value="-50" aria-label="P 最小角度" aria-describedby="rubber-sim-limits-hint">
+            <input class="form-range" id="rubber-sim-rotationMax" type="range" min="-50" max="50" step="0.1" value="50" aria-label="P 最大角度" aria-describedby="rubber-sim-limits-hint">
+          </div>
+          <div id="rubber-sim-limits-hint" class="text-small text-muted">白棍集中在 −50° 至 50° 內轉動；拖動滑塊會顯示相應姿勢，兩個滑塊之間為可轉範圍。</div>
+        </div>
+      </div>
+      <div class="control-stack" id="rubber-sim-joint-controls" hidden></div>
+      <div class="control-stack" id="rubber-sim-crank-controls" hidden>
+        <label class="form-label" for="rubber-sim-crankAngle">順時針累計轉角（°）<input class="form-control" id="rubber-sim-crankAngle" type="number" min="0" step="1" value="0" aria-describedby="rubber-sim-crank-hint"></label>
+        <div id="rubber-sim-crank-hint" class="text-small text-muted">拖 O 或調位置 slider，Q 碰到白棍會推動佢繞 P 轉；受阻時 O 停下。按住 Q 可順時針連續轉動，快慢由你控制。</div>
+        <div class="text-small text-muted">O–Q 固定 21 mm；O 距底板上邊至少 21 mm。</div>
+      </div>
+      <div class="control-stack" id="rubber-sim-whole-controls" hidden>
+        <div class="control-field" id="rubber-sim-angle-field">
+          <div class="control-heading">
+            <span class="control-dot" aria-hidden="true"></span>
+            <label class="form-label" for="rubber-sim-angle">繞 P 的起始／目前角度</label>
+            <span class="control-value"><output id="rubber-sim-angle-value" class="tabular-nums">0.0°</output></span>
+          </div>
+          <input class="form-range" id="rubber-sim-angle" type="range" min="-50" max="50" step="0.1" value="0" aria-describedby="rubber-sim-focus-hint">
+        </div>
+      </div>
+      <div id="rubber-sim-focus-hint" class="text-small text-muted" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  // BEGIN PHYSICS
+  const defaults={mass:0.040,k:100,rest:0.100,damping:0.0003,gravity:9.81};
+  const hookBaseAngle=Math.atan2(12.735+1.751,5.007-18.796)*180/Math.PI;
+  const controls={
+    hook:[
+      ['hookAngle','A 黏合棍角度',15,165,0.1,133.8,'°']
+    ],
+    pivot:[
+      ['pivotT','P 在活動棍 1 的位置',5,95,0.1,54.1,'%'],
+      ['beamT','P 在固定綠棍的位置',5,95,0.1,38,'%']
+    ],
+    joint:[
+      ['join1','J 在棍 1 的位置',5,95,0.1,29,'%'],
+      ['join2','J 在棍 2 的位置',5,95,0.1,60.8,'%'],
+      ['angle2','棍 2 相對棍 1 的角度',-150,150,0.1,-35.1,'°']
+    ],
+    beam:[
+      ['beamX','G 中心左右位置',-100,450,0.1,123.6,'mm'],
+      ['beamY','G 中心上下位置',0,300,0.1,106,'mm'],
+      ['beamAngle','繞 G 的綠棍角度',-180,180,0.1,9.49,'°']
+    ],
+    crank:[
+      ['crankX','O 圓心左右位置',0,210,0.1,88,'mm'],
+      ['crankY','O 圓心上下位置',24,180,0.1,62,'mm'],
+      ['crankLength','曲柄 O–Q 長度',21,21,0.1,21,'mm'],
+      ['pinRadius','Q 圓銷半徑',1,8,0.1,3,'mm'],
+      ['crankAngle','曲柄起始／目前角度',-180,180,0.1,90,'°'],
+      ['crankRPM','順時針轉速',-60,60,0.1,30,'rpm']
+    ]
+  };
+  const limitFields=[['rotationMin','P 最小角度',-50,50,0.1,-50,'°'],['rotationMax','P 最大角度',-50,50,0.1,50,'°']];
+  const fields=[...Object.values(controls).flat(),...limitFields],designDefaults=Object.fromEntries(fields.map(f=>[f[0],f[5]]));
+  const stickLength=114,stickWidth=10,baseLength=210,lengths=[stickLength,stickLength],firstAngle=99.49300759196049*Math.PI/180;
+  const supportWidth=34.2382,supportOffsetX=118.0971-115.0117,beamLength=stickLength;
+  const hookSource=[[18.796,-1.751],[5.007,12.735],[4.496,13.368],[4.103,14.056],[3.828,14.785],[3.67,15.539],[3.631,16.306],[3.708,17.07],[3.902,17.816],[4.213,18.53],[4.64,19.198],[5.182,19.804],[5.815,20.316],[6.503,20.709],[7.231,20.984],[7.986,21.141],[8.753,21.181],[9.516,21.104],[10.263,20.909],[10.977,20.599],[11.644,20.172],[12.251,19.63],[26.039,5.143],[18.796,-1.751]];
+  function sanitize(values={}){
+    values=values&&typeof values==='object'?values:{};
+    const d={...Object.fromEntries(fields.map(([key,label,min,max,step,value])=>{
+      const v=Number.isFinite(values[key])?values[key]:value;
+      return [key,step===1?Math.round(Math.max(min,Math.min(max,v))):Math.max(min,Math.min(max,v))];
+    })),baseX:0,baseY:0};
+    [d.rotationMin,d.rotationMax]=[Math.min(d.rotationMin,d.rotationMax),Math.max(d.rotationMin,d.rotationMax)];
+    d.crankRPM=Math.abs(d.crankRPM);
+    return d;
+  }
+  function along(arm,fraction,side=0){
+    const [a,b]=arm,dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);
+    return [a[0]+dx*fraction-dy/length*side,a[1]+dy*fraction+dx/length*side];
+  }
+  const cross=(a,b)=>a[0]*b[1]-a[1]*b[0],distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  function stickOutline(arm){
+    // ponytail: 每個圓頭用 16 段外切輪廓，誤差小於 0.025 mm；需要更高接觸精度才增加分段。
+    const r=stickWidth/2,L=distance(...arm),angle=Math.atan2(arm[1][1]-arm[0][1],arm[1][0]-arm[0][0]);
+    const step=Math.PI/16,radius=r/Math.cos(step/2),outline=[];
+    for(const [t,start] of [[r/L,angle+Math.PI/2],[1-r/L,angle-Math.PI/2]]){
+      const center=along(arm,t);
+      for(let i=0;i<16;i++){
+        const a=start+step*(i+0.5);outline.push([center[0]+radius*Math.cos(a),center[1]+radius*Math.sin(a)]);
+      }
+    }
+    return outline;
+  }
+  function buildBinding(arms){
+    const outlines=arms.map(stickOutline),corners=[];
+    for(let i=0;i<outlines[0].length;i++)for(let j=0;j<outlines[1].length;j++){
+      const a=outlines[0][i],b=outlines[0][(i+1)%outlines[0].length],c=outlines[1][j],d=outlines[1][(j+1)%outlines[1].length];
+      const u=b.map((v,k)=>v-a[k]),v=d.map((x,k)=>x-c[k]),delta=c.map((x,k)=>x-a[k]),det=cross(u,v);
+      if(Math.abs(det)<1e-9)continue;
+      const t=cross(delta,v)/det,s=cross(delta,u)/det;
+      if(t>1e-7&&t<1-1e-7&&s>1e-7&&s<1-1e-7)corners.push(a.map((x,k)=>x+t*u[k]));
+    }
+    if(!corners.length)return null;
+    // 取設計姿勢中最上方的外沿交點；整組轉動時保留同一個凹位。
+    const notch=corners.reduce((best,p)=>p[1]>best[1]?p:best);
+    return {notch};
+  }
+  function migrateDesign(values,version){
+    const d=sanitize(values);
+    if(version===3&&Number.isFinite(values?.px)&&Number.isFinite(values?.py)){
+      const a=d.beamAngle*Math.PI/180,offset=beamLength*(0.5-d.beamT/100);
+      d.beamX=values.px+Math.cos(a)*offset-Math.sin(a)*0.02543541256366235;
+      d.beamY=values.py+Math.sin(a)*offset+Math.cos(a)*0.02543541256366235;
+    }
+    return d;
+  }
+  function supportContact(beam,left,right){
+    // 圓頭棍是中間矩形加兩個半圓；找支架寬度內最低的棍面，令頂部貼住它。
+    const r=stickWidth/2,a=along(beam,r/beamLength),b=along(beam,1-r/beamLength);
+    const points=[along([a,b],0,-r),along([a,b],1,-r),along([a,b],1,r),along([a,b],0,r)],candidates=[];
+    for(let i=0;i<4;i++){
+      const p=points[i],q=points[(i+1)%4];
+      if(p[0]>=left&&p[0]<=right)candidates.push(p);
+      if(Math.abs(q[0]-p[0])>1e-12)for(const x of [left,right]){
+        const t=(x-p[0])/(q[0]-p[0]);
+        if(t>=0&&t<=1)candidates.push([x,p[1]+t*(q[1]-p[1])]);
+      }
+    }
+    for(const center of [a,b]){
+      const x=Math.max(left,Math.min(right,center[0])),dx=x-center[0];
+      if(Math.abs(dx)<=r)candidates.push([x,center[1]-Math.sqrt(Math.max(0,r*r-dx*dx))]);
+    }
+    return candidates.reduce((best,p)=>p[1]<best[1]?p:best);
+  }
+  function buildGeometry(values=designDefaults){
+    const d=sanitize(values),half=supportWidth/2,baseTop=d.baseY+3;
+    d.crankY=Math.max(baseTop+21,d.crankY);
+    const beamLimits={minX:d.baseX+half-supportOffsetX,maxX:d.baseX+baseLength-half-supportOffsetX};
+    d.beamX=Math.max(beamLimits.minX,Math.min(beamLimits.maxX,d.beamX));
+    const ba=d.beamAngle*Math.PI/180,bu=[Math.cos(ba),Math.sin(ba)];
+    const makeBeam=()=>[-0.5,0.5].map(t=>[d.beamX+bu[0]*beamLength*t,d.beamY+bu[1]*beamLength*t]);
+    const x=d.beamX+supportOffsetX,left=x-half,right=x+half;
+    let beam=makeBeam(),contact=supportContact(beam,left,right);
+    beamLimits.minY=baseTop+5+d.beamY-contact[1];
+    d.beamY=Math.max(beamLimits.minY,d.beamY);beam=makeBeam();contact=supportContact(beam,left,right);
+    const P=along(beam,d.beamT/100,-0.02543541256366235);
+    const sourceFoot=[(hookSource[0][0]+hookSource[hookSource.length-2][0])/2,(hookSource[0][1]+hookSource[hookSource.length-2][1])/2];
+    const hookRotation=(d.hookAngle-hookBaseAngle)*Math.PI/180,baseShift=[d.baseX,d.baseY];
+    const gluedPoint=q=>rotate(q,hookRotation,sourceFoot).map((v,i)=>v+baseShift[i]);
+    const hook=hookSource.map(gluedPoint),glue=sourceFoot.map((v,i)=>v+baseShift[i]);
+    const u=[Math.cos(firstAngle),Math.sin(firstAngle)],n=[-u[1],u[0]],pivotSide=-0.018443177200422357;
+    const start=P.map((v,i)=>v-u[i]*lengths[0]*d.pivotT/100-n[i]*pivotSide);
+    const arm1=[start,start.map((v,i)=>v+u[i]*lengths[0])],joint=along(arm1,d.join1/100);
+    const a2=firstAngle+d.angle2*Math.PI/180,u2=[Math.cos(a2),Math.sin(a2)];
+    const start2=joint.map((v,i)=>v-u2[i]*lengths[1]*d.join2/100),arm2=[start2,start2.map((v,i)=>v+u2[i]*lengths[1])];
+    const arms=[arm1,arm2],binding=buildBinding(arms);
+    const centers=arms.map(a=>a[0].map((v,i)=>(v+a[1][i])/2-P[i]));
+    const com=centers[0].map((v,i)=>(v+centers[1][i])/2000);
+    // 均勻薄棍近似；位置改變時重新計算質心及轉動慣量。
+    const inertiaPerMass=lengths.reduce((sum,L,i)=>sum+L*L/12+centers[i][0]**2+centers[i][1]**2,0)/2000000;
+    const base=[[d.baseX,d.baseY],[d.baseX+baseLength,d.baseY],[d.baseX+baseLength,d.baseY+3],[d.baseX,d.baseY+3],[d.baseX,d.baseY]];
+    const support=[[left,baseTop],[right,baseTop],[right,contact[1]],[left,contact[1]],[left,baseTop]];
+    const radius=Math.max(...arms.flat().map(q=>Math.hypot(q[0]-P[0],q[1]-P[1])))+stickWidth/2;
+    const crankCenter=[d.crankX,d.crankY],crankReach=d.crankLength+d.pinRadius;
+    const boundsPoints=[...base,...support,...beam,...hook,[P[0]-radius,P[1]-radius],[P[0]+radius,P[1]+radius],crankCenter.map(v=>v-crankReach),crankCenter.map(v=>v+crankReach)];
+    const bounds=[0,1].map(i=>[Math.min(...boundsPoints.map(q=>q[i]))-12,Math.max(...boundsPoints.map(q=>q[i]))+12]);
+    const A=hookBoardContact(hook,base);
+    return {design:d,P,A,arms,joint,binding,com,inertiaPerMass,beam,base,support,hook,glue,contact,beamLimits,bounds,radius,crankCenter};
+  }
+  const defaultGeometry=buildGeometry();
+  function rotate(q,t,P){const x=q[0]-P[0],y=q[1]-P[1],c=Math.cos(t),s=Math.sin(t);return[P[0]+x*c-y*s,P[1]+x*s+y*c];}
+  function hookBoardContact(hook,board){
+    // 橡筋卡在斜棍與底板上邊的左側交界，即使用者指定的另一邊凹角。
+    const y=board[2][1];let best=null;
+    for(let i=1;i<hook.length;i++){
+      const a=hook[i-1],b=hook[i],dy=b[1]-a[1];if(Math.abs(dy)<1e-12)continue;
+      const t=(y-a[1])/dy,x=a[0]+t*(b[0]-a[0]);
+      if(t>=0&&t<=1&&x>=board[0][0]&&x<=board[1][0]&&(!best||x<best[0]))best=[x,y];
+    }
+    return best;
+  }
+  function forces(t,w,g=defaultGeometry,params=defaults){
+    const {P,A,joint,binding,com,inertiaPerMass}=g;
+    const b=rotate(binding?.notch||joint,t,P),rx=(b[0]-P[0])/1000,ry=(b[1]-P[1])/1000;
+    const a=A,dx=(a[0]-b[0])/1000,dy=(a[1]-b[1])/1000,L=binding?Math.hypot(dx,dy):0;
+    // ponytail: 橡筋採只受拉的線性模型；實測力－伸長曲線取得後才換成非線性模型。
+    const tension=Math.max(0,params.k*(L-params.rest));
+    const spring=L>1e-12?tension*(rx*dy-ry*dx)/L:0;
+    const cx=com[0]*Math.cos(t)-com[1]*Math.sin(t),cy=com[0]*Math.sin(t)+com[1]*Math.cos(t);
+    const torque=spring-params.mass*params.gravity*cx-params.damping*w;
+    return {a,b,path:binding?[a,b]:[],valid:!!binding,L,tension,spring,torque,acceleration:torque/(params.mass*inertiaPerMass),energy:0.5*params.mass*inertiaPerMass*w*w+0.5*params.k*Math.max(0,L-params.rest)**2+params.mass*params.gravity*cy};
+  }
+  function step(state,dt,g=defaultGeometry,params=defaults){
+    const derivative=q=>[q[1],forces(q[0],q[1],g,params).acceleration];
+    const shift=(q,d,scale)=>q.map((v,i)=>v+d[i]*scale);
+    const a=derivative(state),b=derivative(shift(state,a,dt/2)),c=derivative(shift(state,b,dt/2)),d=derivative(shift(state,c,dt));
+    return state.map((v,i)=>v+dt*(a[i]+2*b[i]+2*c[i]+d[i])/6);
+  }
+  function crankPin(phase,g=defaultGeometry){
+    return g.crankCenter.map((v,i)=>v+g.design.crankLength*(i?Math.sin(phase):Math.cos(phase)));
+  }
+  const angleDelta=(next,previous)=>Math.atan2(Math.sin(next-previous),Math.cos(next-previous));
+  function rotationBounds(g=defaultGeometry){
+    return g.design.rotationMax-g.design.rotationMin>=360-1e-9?[-Infinity,Infinity]:[g.design.rotationMin*Math.PI/180,g.design.rotationMax*Math.PI/180];
+  }
+  function limitRotation(state,g=defaultGeometry){
+    const [min,max]=rotationBounds(g),angle=Math.max(min,Math.min(max,state[0]));
+    return [angle,(angle<=min&&state[1]<0)||(angle>=max&&state[1]>0)?0:state[1]];
+  }
+  function pinContacts(angle,phase,g=defaultGeometry){
+    const pin=crankPin(phase,g),r=stickWidth/2;
+    return g.arms.map((arm,index)=>{
+      const length=distance(...arm),a=rotate(along(arm,r/length),angle,g.P),b=rotate(along(arm,1-r/length),angle,g.P);
+      const u=b.map((v,i)=>v-a[i]),t=Math.max(0,Math.min(1,u.reduce((sum,v,i)=>sum+(pin[i]-a[i])*v,0)/u.reduce((sum,v)=>sum+v*v,0)));
+      const point=a.map((v,i)=>v+t*u[i]),delta=pin.map((v,i)=>v-point[i]),d=Math.hypot(...delta);
+      const normal=d>1e-9?delta.map(v=>v/d):[-u[1]/Math.hypot(...u),u[0]/Math.hypot(...u)];
+      return {arm:index+1,gap:d-r-g.design.pinRadius,point,normal,lever:cross(point.map((v,i)=>v-g.P[i]),normal)};
+    });
+  }
+  function resolvePin(state,phase,omega,g=defaultGeometry){
+    const q=limitRotation(state,g),[min,max]=rotationBounds(g),velocity=[-Math.sin(phase),Math.cos(phase)].map(v=>v*g.design.crankLength*omega);
+    let limited=false;
+    // 只解圓銷與圓頭棍的單向接觸；不把白棍綁到曲柄上。
+    for(let i=0;i<24;i++){
+      const c=pinContacts(q[0],phase,g).reduce((a,b)=>a.gap<b.gap?a:b);
+      if(c.gap>=-1e-6)break;
+      if(Math.abs(c.lever)<1e-6)return {state:[q[0],0],touching:true,jammed:true};
+      const next=q[0]+Math.max(-0.06,Math.min(0.06,c.gap/c.lever));
+      q[0]=Math.max(min,Math.min(max,next));limited=limited||q[0]!==next;
+    }
+    const contacts=pinContacts(q[0],phase,g);
+    if(contacts.some(c=>c.gap<-0.001))return {state:[q[0],0],touching:true,jammed:true,reason:limited?'limit':'contact'};
+    for(let i=0;i<4;i++)for(const c of contacts){
+      const pinSpeed=c.normal.reduce((sum,v,k)=>sum+v*velocity[k],0);
+      if(c.gap<=1e-5&&pinSpeed-c.lever*q[1]<-1e-7){
+        if(Math.abs(c.lever)<1e-6)return {state:[q[0],0],touching:true,jammed:true};
+        q[1]=pinSpeed/c.lever;
+        q[1]=limitRotation(q,g)[1];
+      }
+    }
+    const jammed=contacts.some(c=>c.gap<=1e-5&&c.normal.reduce((sum,v,k)=>sum+v*velocity[k],0)-c.lever*q[1]<-1e-4);
+    return {state:q,touching:contacts.some(c=>c.gap<0.03),jammed,reason:jammed&&(q[0]<=min||q[0]>=max)?'limit':'contact'};
+  }
+  function advanceMechanism(state,phase,dt,g=defaultGeometry,omega=0){
+    // ponytail: 每小步的外沿位移不超過 0.5 mm，最多 128 步；超出則停下，避免高速穿透。
+    const initial=limitRotation(state,g),count=Math.max(1,Math.ceil((Math.abs(initial[1])*g.radius+Math.abs(omega)*g.design.crankLength)*dt/0.5));
+    if(count>128)return {state:[initial[0],0],phase,touching:false,jammed:true};
+    let result={state:initial,phase,touching:false,jammed:false};
+    for(let i=0;i<count;i++){
+      const nextPhase=result.phase+omega*dt/count;
+      const contact=resolvePin(limitRotation(step(result.state,dt/count,g),g),nextPhase,omega,g);
+      if(contact.jammed)return {...result,state:[result.state[0],0],jammed:true,reason:contact.reason};
+      result={...contact,phase:nextPhase};
+    }
+    return result;
+  }
+  function translateCrank(state,phase,center,g=defaultGeometry){
+    const target=buildGeometry({...g.design,crankX:center[0],crankY:center[1]}),start=g.crankCenter;
+    // 調 O 時暫停時間積分；每次最多移 0.5 mm，用原有接觸解算推動白棍，避免跨過棍身。
+    const count=Math.max(1,Math.ceil(distance(start,target.crankCenter)/0.5));
+    let q=limitRotation([state[0],0],g),current=g,touching=false;
+    for(let i=1;i<=count;i++){
+      const point=start.map((v,k)=>v+(target.crankCenter[k]-v)*i/count);
+      const next={...g,crankCenter:point,design:{...g.design,crankX:point[0],crankY:point[1]}};
+      const contact=resolvePin(q,phase,0,next);
+      if(contact.jammed)return {state:[q[0],0],geometry:buildGeometry(current.design),touching:contact.touching,jammed:true,reason:contact.reason};
+      q=[contact.state[0],0];current=next;touching=contact.touching;
+    }
+    return {state:q,geometry:target,touching,jammed:false};
+  }
+  function whiteSweepPath(ranges,g=defaultGeometry){
+    const intervals=[];
+    for(const [min,max] of ranges.map(r=>[...r]).sort((a,b)=>a[0]-b[0])){
+      const last=intervals[intervals.length-1];
+      if(last&&min<=last[1]+1e-9)last[1]=Math.max(last[1],max);else intervals.push([min,max]);
+    }
+    const centers=g.arms.map(arm=>{const r=stickWidth/2/distance(...arm);return [along(arm,r),along(arm,1-r)];});
+    const paths=[];
+    // ponytail: 掃過範圍以最多 0.5° 一步疊合實際圓頭棍；需要更細的輪廓才減小角步。
+    for(const [min,max] of intervals){
+      const steps=Math.ceil((max-min)/0.5);
+      for(let i=0;i<=steps;i++){
+        const angle=(steps?min+(max-min)*i/steps:min)*Math.PI/180;
+        for(const arm of centers)paths.push(arm.map((p,k)=>`${k?'L':'M'}${rotate(p,angle,g.P).map(v=>v.toFixed(3)).join(',')}`).join(''));
+      }
+    }
+    return paths.join(' ');
+  }
+  function analyzeCrankCycle(state,phase,g=defaultGeometry){
+    const omega=-g.design.crankRPM*Math.PI/30,target=phase-2*Math.PI;
+    const report={startPhase:phase,segments:[],degrees:0,complete:false,reason:null,stepDegrees:Math.abs(omega)*0.001*180/Math.PI};
+    if(!g.binding||omega===0){report.reason=g.binding?'speed':'binding';return report;}
+    const initial=resolvePin(state,phase,omega,g);
+    if(initial.jammed){report.reason=initial.reason||'contact';return report;}
+    let q=initial.state,current=phase,previousLength=forces(...q,g).L;
+    // ponytail: 每次分析最多積分 60 秒；轉速低於 1 rpm 時顯示已算出的部分，避免阻塞頁面。
+    for(let i=0;i<60000&&current-target>1e-10;i++){
+      const from=(phase-current)*180/Math.PI,dt=Math.min(0.001,(target-current)/omega);
+      const next=advanceMechanism(q,current,dt,g,omega),f=forces(...next.state,g);
+      const to=Math.min(360,(phase-next.phase)*180/Math.PI);
+      if(to>from+1e-9){
+        const fromAngle=q[0]*180/Math.PI,toAngle=next.state[0]*180/Math.PI;
+        const kind=next.touching?'contact':f.tension>0&&f.L<previousLength-1e-10?'return':'free';
+        const last=report.segments[report.segments.length-1];
+        if(last?.kind===kind){
+          last.to=to;last.toAngle=toAngle;last.minAngle=Math.min(last.minAngle,toAngle);last.maxAngle=Math.max(last.maxAngle,toAngle);
+        }else report.segments.push({from,to,kind,fromAngle,toAngle,minAngle:Math.min(fromAngle,toAngle),maxAngle:Math.max(fromAngle,toAngle)});
+      }
+      q=next.state;current=next.phase;previousLength=f.L;report.degrees=to;
+      if(next.jammed){report.reason=next.reason||'contact';return report;}
+    }
+    report.complete=current-target<=1e-10;
+    if(!report.complete)report.reason='budget';
+    return report;
+  }
+  // END PHYSICS
+  const root=document.getElementById('rubber-arm-simulation'),svg=root.querySelector('.mechanism');
+  // 固定畫布座標；載入時預留兩個 P slider 的移動及整組旋轉範圍，之後不再自動置中或縮放。
+  let canvasBounds=null,canvasMap=null,crankScreenCenter=[0,0];
+  const input=root.querySelector('#rubber-sim-angle'),output=root.querySelector('#rubber-sim-angle-value');
+  const play=root.querySelector('#rubber-sim-play'),drive=root.querySelector('#rubber-sim-drive'),home=root.querySelector('#rubber-sim-home'),status=root.querySelector('#rubber-sim-status');
+  const groupLabels={beam:'G 綠棍中心',hook:'A 黏合棍',pivot:'P 樞軸與轉角範圍',joint:'J 接合與凹位 B',whole:'整體轉動',crank:'O 曲柄與圓銷 Q'};
+  const groupFirst={...Object.fromEntries(Object.entries(controls).map(([group,items])=>[group,items[0][0]])),pivot:'rotationMin',whole:'angle'};
+  const groupFor={...Object.fromEntries(Object.entries(controls).flatMap(([group,items])=>items.map(([key])=>[key,group]))),angle:'whole',rotationMin:'pivot',rotationMax:'pivot'};
+  const controlHints={
+    beamX:'G 左右位置：移動綠棍中心；底板不動，支架自動跟隨。',
+    beamY:'G 上下位置：移動綠棍中心；支架高度自動調整。',
+    beamAngle:'G 綠棍角度：繞中心 G 轉角；支架保持接觸。',
+    hookAngle:'A 黏合棍角度：繞底部黏合點轉角；橡筋接觸點 A 保持卡在斜棍與底板上邊的凹角。',
+    pivotT:'P 在活動棍的位置：活動棍沿自身方向移位，綠棍上的 P 不動。',
+    beamT:'P 在綠棍的位置：P 沿綠棍移動，兩支活動棍一起隨 P 移位。',
+    join1:'J 接合點沿棍 1 移動，棍 2 隨之移位；橡筋 B 端卡在兩棍上方外沿交點。',
+    join2:'棍 2 沿自身方向移位；B 按兩棍的上方外沿交點重新計算。',
+    angle2:'棍 2 繞 J 改變夾角，凹位 B 隨外沿改變；放手後保持這個夾角。',
+    angle:'整體角度：兩支活動棍一起繞 P 轉動，兩棍相對位置保持固定。',
+    crankX:'O 左右位置：移動曲柄圓心；Q 接觸白棍會推動兩棍，綠色件及 P 不動。',
+    crankY:'O 上下位置：Q 接觸白棍會推動兩棍；O 距底板上邊至少 21 mm，O–Q 固定 21 mm。',
+    crankAngle:'按住 Q 順時針繞 O 連續拖動，快慢由你控制；拖 O 可調圓心位置。',
+    rotationMin:'下限預覽：拖動左滑塊，兩支白棍即時一起轉到下限姿勢。',
+    rotationMax:'上限預覽：拖動右滑塊，兩支白棍即時一起轉到上限姿勢。'
+  };
+  let activeControl='rotationMin';
+  let guideVisible=false,guideTimer=0;
+  let design={...designDefaults},model=buildGeometry(design),lastSaved=null;
+  let state=[0,0],crankPhase=design.crankAngle*Math.PI/180,driven=false,running=false,elapsed=0,previous=null,carry=0,quiet=0,frameId=0;
+  let manualMode=false,manualTarget=null,dragInfo=null;
+  let cycleAnalysis=null,whiteSweepMarkup='';
+  const analyzeButton=root.querySelector('#rubber-sim-analyze'),cycleNote=root.querySelector('#rubber-sim-cycle-note');
+  const cyclePanel=root.querySelector('#rubber-sim-cycle-panel'),cycleHeading=root.querySelector('#rubber-sim-cycle-heading');
+  const cycleSegments=root.querySelector('#rubber-sim-cycle-segments'),cycleRanges=root.querySelector('#rubber-sim-cycle-ranges'),cycleMarker=root.querySelector('#rubber-sim-cycle-marker');
+  const phaseLabels={contact:'Q 接觸／推棍',return:'Q 離開／橡筋收縮',free:'Q 離開／其他狀態'};
+  const phaseColors={contact:'var(--purple)',return:'var(--orange)',free:'var(--muted-foreground)'};
+  const crankInput=root.querySelector('#rubber-sim-crankAngle');
+  const wrapped=t=>((t*180/Math.PI+180)%360+360)%360-180;
+  const clockwiseDegrees=()=>Math.max(0,design.crankAngle-crankPhase/Math.PI*180);
+  const snapshot=()=>({version:13,angle:state[0]/Math.PI*180,crankAngle:crankPhase/Math.PI*180,design:{...design}});
+  function invalidateCycle(){
+    cycleAnalysis=null;whiteSweepMarkup='';cycleSegments.innerHTML='';cycleRanges.innerHTML='';cycleMarker.hidden=true;
+    cycleNote.textContent='配置或姿勢已改動；按「分析一圈」更新，啟動曲柄亦會自動重算。';
+    root.querySelector('#rubber-sim-cycle-track').setAttribute('aria-label','白棍掃過範圍尚未更新');
+  }
+  function runCycleAnalysis(){
+    cycleAnalysis=analyzeCrankCycle(state,crankPhase,model);
+    const result=cycleAnalysis;
+    const descriptions=Object.entries(phaseLabels).map(([kind,label])=>{
+      const ranges=result.segments.filter(s=>s.kind===kind),total=ranges.reduce((sum,s)=>sum+s.to-s.from,0);
+      const min=ranges.length?Math.min(...ranges.map(s=>s.minAngle)):0,max=ranges.length?Math.max(...ranges.map(s=>s.maxAngle)):0;
+      const angles=ranges.map(s=>[s.minAngle,s.maxAngle]);
+      const text=ranges.length?`白棍 ${min.toFixed(1)}° 至 ${max.toFixed(1)}° · 掃角 ${(max-min).toFixed(1)}°<br><span class="text-muted">${ranges.map(s=>`起點 ${s.fromAngle.toFixed(1)}° → 終點 ${s.toAngle.toFixed(1)}°（曲柄 ${s.from.toFixed(1)}°–${s.to.toFixed(1)}°）`).join('；')}</span>`:'本圈未出現';
+      return {kind,label,total,min,max,angles,text};
+    });
+    const percent=angle=>(angle-limitFields[0][2])/(limitFields[0][3]-limitFields[0][2])*100;
+    cycleSegments.innerHTML=descriptions.map(s=>`<div class="cycle-lane" data-phase="${s.kind}" title="${s.label}">${s.angles.map(([min,max])=>`<span style="left:${percent(min)}%;width:${percent(max)-percent(min)}%;background:${phaseColors[s.kind]}"></span>`).join('')}</div>`).join('');
+    const axis=Math.atan2(model.arms[0][1][1]-model.arms[0][0][1],model.arms[0][1][0]-model.arms[0][0][0]);
+    whiteSweepMarkup=descriptions.filter(s=>s.angles.length).map((s,i)=>{
+      const r=16+i*5,point=angle=>model.P.map((v,k)=>v+r*(k?Math.sin(axis+angle*Math.PI/180):Math.cos(axis+angle*Math.PI/180)));
+      const arc=s.angles.filter(([min,max])=>max-min>1e-6).map(([min,max])=>`<path data-white-angle-range="${s.kind}" data-min="${min}" data-max="${max}" d="M${point(min).join(',')} A${r},${r} 0 0 1 ${point(max).join(',')}" fill="none" stroke="${phaseColors[s.kind]}" stroke-width="0.8"/>`).join('');
+      return `<path data-white-swept-area="${s.kind}" d="${whiteSweepPath(s.angles,model)}" fill="none" stroke="${phaseColors[s.kind]}" stroke-width="${stickWidth}" stroke-linecap="round" opacity="0.14"/>`+arc;
+    }).join('');
+    cycleRanges.innerHTML=descriptions.map(s=>`<dt data-phase="${s.kind}">${s.label}</dt><dd>${s.text}</dd>`).join('');
+    if(!result.complete)cycleRanges.innerHTML+=`<dt>未到達的角度</dt><dd>${result.degrees.toFixed(1)}°–360.0°</dd>`;
+    const reason={limit:'P 已到轉角限制',contact:'圓銷受阻',binding:'兩棍沒有凹位',speed:'曲柄轉速為零',budget:'已到 60 秒計算上限'}[result.reason];
+    cycleNote.textContent=`白棍原始姿勢為 0°；白線係目前白棍角度，主圖陰影係兩支白棍掃過範圍。按 ${design.crankRPM.toFixed(1)} rpm 預測下一圈。`+(result.complete?'下一圈或手動變速時，範圍可能不同。':`${reason}，曲柄只能到 ${result.degrees.toFixed(1)}°。`);
+    root.querySelector('#rubber-sim-cycle-track').setAttribute('aria-label',descriptions.map(s=>`${s.label}：${s.angles.length?`白棍 ${s.min.toFixed(1)}° 至 ${s.max.toFixed(1)}°`:'本圈未出現'}`).join('；'));
+    updateCycleMarker();
+    return result.complete?`分析完成 · 白棍推動掃角 ${(descriptions[0].max-descriptions[0].min).toFixed(1)}° · 回拉掃角 ${(descriptions[1].max-descriptions[1].min).toFixed(1)}°`:`分析停止於曲柄 ${result.degrees.toFixed(1)}° · ${reason}`;
+  }
+  function updateCycleMarker(){
+    cycleMarker.hidden=!cycleAnalysis;
+    if(!cycleMarker.hidden)cycleMarker.style.left=`${(state[0]*180/Math.PI-limitFields[0][2])/(limitFields[0][3]-limitFields[0][2])*100}%`;
+  }
+  function rebuild(){model=buildGeometry(design);design={...model.design};invalidateCycle();}
+  function moveCrankCenter(center){
+    const result=translateCrank(state,crankPhase,center,model);
+    state=result.state;model=result.geometry;design={...model.design};
+    invalidateCycle();
+    status.textContent=result.jammed?(result.reason==='limit'?'P 已到轉角限制，O 停下':'圓銷受阻，O 停在接觸位置'):(result.touching?'移動 O · Q 推動白棍':'移動 O · Q 未接觸白棍');
+  }
+  function restore(snapshot){
+    const saved=snapshot?.modelContent;
+    // 舊快照不覆蓋使用者指定的新初始配置；其後的調整仍會保留。
+    const compatible=[10,11,12,13].includes(saved?.version),degrees=compatible?saved.angle:0;
+    design=migrateDesign(compatible?saved.design:designDefaults,saved?.version);rebuild();
+    const key=snapshot?.privateContent?.control;
+    activeControl=Object.prototype.hasOwnProperty.call(controlHints,key)?key:'rotationMin';
+    state=limitRotation([Number.isFinite(degrees)?degrees/180*Math.PI:0,0],model);elapsed=0;
+    crankPhase=([11,12,13].includes(saved?.version)&&Number.isFinite(saved.crankAngle)?saved.crankAngle:design.crankAngle)/180*Math.PI;
+    const reference=design.crankAngle/180*Math.PI;
+    if(crankPhase>reference)crankPhase-=Math.ceil((crankPhase-reference)/(2*Math.PI))*2*Math.PI;
+    syncControls();
+  }
+  // 沿用此檔案既有的儲存鍵，保留更新前使用者的配置。
+  const storageKey=`codex:visualization-widget-state-v2:${JSON.stringify([window.location.pathname,window.location.search])}`;
+  const initialStorageKey=`${storageKey}:initial`;
+  function parseSaved(raw){
+    try{return typeof raw==='string'&&raw.length<=16*1024?JSON.parse(raw):null;}catch{return null;}
+  }
+  function loadSaved(key=storageKey){try{return parseSaved(localStorage.getItem(key));}catch{return null;}}
+  function loadInitial(){const saved=loadSaved(initialStorageKey);return saved?.modelContent?.version===13?saved:null;}
+  function save(){
+    const value=snapshot();lastSaved=JSON.stringify(value);
+    try{localStorage.setItem(storageKey,JSON.stringify({modelContent:value,privateContent:{control:activeControl}}));}catch{}
+  }
+  function halt(message){
+    const pointer=dragInfo?.id;dragInfo=null;manualMode=false;manualTarget=null;
+    if(pointer!==undefined&&svg.hasPointerCapture(pointer))svg.releasePointerCapture(pointer);
+    svg.setAttribute('data-dragging','false');running=false;cancelAnimationFrame(frameId);previous=null;carry=0;quiet=0;
+    play.textContent='放手';drive.textContent='啟動曲柄';status.textContent=message+' · 慢速 0.25×';
+  }
+  const fieldInputs=new Map();
+  for(const [group,items] of Object.entries(controls)){
+    const container=root.querySelector(`#rubber-sim-${group}-controls`);
+    for(const [key,label,min,max,step] of items){
+      if(['pinRadius','crankRPM','crankAngle','crankLength'].includes(key))continue;
+      const cell=document.createElement('div'),id=`rubber-sim-${key}`;
+      cell.className='control-field';
+      cell.innerHTML=`<div class="control-heading"><span class="control-dot" aria-hidden="true"></span><label class="form-label" for="${id}">${label}</label><span class="control-value"><output class="tabular-nums"></output></span></div><input class="form-range" id="${id}" type="range" min="${min}" max="${max}" step="${step}" aria-describedby="rubber-sim-focus-hint">`;
+      const slider=cell.querySelector('input'),value=cell.querySelector('output');
+      fieldInputs.set(key,{slider,value,cell});container.appendChild(cell);
+      for(const event of ['focus','pointerenter'])slider.addEventListener(event,()=>chooseControl(key,true));
+      slider.addEventListener('input',()=>{
+        halt('待放手');state[1]=0;elapsed=0;
+        if(key==='crankX'||key==='crankY')moveCrankCenter(model.crankCenter.map((v,i)=>i===(key==='crankX'?0:1)?Number(slider.value):v));
+        else {design[key]=Number(slider.value);rebuild();}
+        syncControls();chooseControl(key,true);
+      });
+      slider.addEventListener('change',save);
+    }
+  }
+  for(const [key] of limitFields){
+    const slider=root.querySelector(`#rubber-sim-${key}`);
+    for(const event of ['focus','pointerenter'])slider.addEventListener(event,()=>chooseControl(key,true));
+    slider.addEventListener('input',()=>{
+      halt('待放手');const value=Number(slider.value);
+      design[key]=key==='rotationMin'?Math.min(value,design.rotationMax):Math.max(value,design.rotationMin);
+      rebuild();state=limitRotation([design[key]/180*Math.PI,0],model);elapsed=0;syncControls();
+      status.textContent=`P ${key==='rotationMin'?'下限':'上限'}預覽 · ${design[key].toFixed(1)}°`;
+      chooseControl(key,true);
+    });
+    slider.addEventListener('change',save);
+  }
+  function chooseControl(key,preview=false){
+    activeControl=key;
+    clearTimeout(guideTimer);guideVisible=preview&&!running;
+    root.setAttribute('data-guides',String(guideVisible));
+    if(guideVisible)guideTimer=setTimeout(()=>{guideVisible=false;root.setAttribute('data-guides','false');draw();},800);
+    const group=groupFor[key];
+    for(const name of Object.keys(groupLabels)){
+      root.querySelector(`#rubber-sim-select-${name}`).setAttribute('aria-pressed',String(name===group));
+      root.querySelector(`#rubber-sim-${name}-controls`).hidden=name!==group;
+    }
+    for(const [name,{cell}] of fieldInputs)cell.setAttribute('data-selected',String(name===key));
+    root.querySelector('#rubber-sim-angle-field').setAttribute('data-selected',String(key==='angle'));
+    root.querySelector('#rubber-sim-limits-field').setAttribute('data-selected',String(key==='rotationMin'||key==='rotationMax'));
+    root.querySelector('#rubber-sim-settings-heading').textContent=groupLabels[group];
+    root.querySelector('#rubber-sim-focus-hint').textContent=controlHints[key];
+    draw();
+  }
+  for(const [group,key] of Object.entries(groupFirst)){
+    root.querySelector(`#rubber-sim-select-${group}`).addEventListener('click',()=>{chooseControl(key);save();});
+  }
+  function syncControls(){
+    for(const [key,label,min,max,step,value,unit] of fields){
+      const entry=fieldInputs.get(key);if(!entry)continue;
+      if(key==='beamX'){entry.slider.min=Math.ceil(model.beamLimits.minX*10)/10;entry.slider.max=Math.floor(model.beamLimits.maxX*10)/10;}
+      if(key==='beamY')entry.slider.min=Math.max(min,Math.ceil(model.beamLimits.minY*10)/10);
+      entry.slider.value=design[key];entry.value.value=`${design[key].toFixed(step===1?0:2)} ${unit}`;
+    }
+    for(const [key,label,min,max] of limitFields){const slider=root.querySelector(`#rubber-sim-${key}`);slider.min=min;slider.max=max;slider.value=design[key];}
+    root.querySelector('#rubber-sim-limits-value').value=`${design.rotationMin.toFixed(1)}° 至 ${design.rotationMax.toFixed(1)}°`;
+    const band=root.querySelector('#rubber-sim-range-window');
+    band.style.marginInlineStart=`${design.rotationMin+50}%`;band.style.width=`${design.rotationMax-design.rotationMin}%`;
+    input.min=design.rotationMin;input.max=design.rotationMax;
+  }
+  function draw(){
+    if(!canvasBounds){
+      const scenes=controls.pivot[0].slice(2,4).flatMap(pivotT=>
+        controls.pivot[1].slice(2,4).map(beamT=>buildGeometry({...design,pivotT,beamT})));
+      canvasBounds=[0,1].map(axis=>[
+        Math.min(...scenes.map(g=>g.bounds[axis][0])),Math.max(...scenes.map(g=>g.bounds[axis][1]))
+      ]);
+    }
+    const {P,arms,beam,base,support,hook}=model,bounds=canvasBounds;
+    const width=Math.max(280,svg.getBoundingClientRect().width),spanX=bounds[0][1]-bounds[0][0],spanY=bounds[1][1]-bounds[1][0];
+    // 只在視窗尺寸改變時調整畫面比例；P、曲柄及接合位置不會觸發自動縮放。
+    const availableHeight=Math.max(560,window.innerHeight-160);
+    const scale=Math.min((width-64)/spanX,(availableHeight-48)/spanY),height=spanY*scale+48;
+    const point=q=>[(width-spanX*scale)/2+(q[0]-bounds[0][0])*scale,24+(bounds[1][1]-q[1])*scale];
+    canvasMap={scale,left:(width-spanX*scale)/2,minX:bounds[0][0],maxY:bounds[1][1]};
+    const path=(pts,color,stroke=3,dash='')=>`<path d="${pts.map((q,i)=>`${i?'L':'M'}${point(q).join(',')}`).join(' ')}" fill="none" stroke="${color}" stroke-width="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+    const label=(q,text,ox=8,oy=-8,primary=false)=>{const v=point(q);return`<text${primary?' class="primary-label"':''} x="${v[0]+ox}" y="${v[1]+oy}">${text}</text>`;};
+    const circle=(q,color)=>{const v=point(q);return`<circle cx="${v[0]}" cy="${v[1]}" r="3.5" fill="${color}"/>`;};
+    const stick=(arm,color)=>{
+      const length=Math.hypot(arm[1][0]-arm[0][0],arm[1][1]-arm[0][1]);
+      const a=point(along(arm,stickWidth/2/length)),b=point(along(arm,1-stickWidth/2/length));
+      const d=`M${a.join(',')}L${b.join(',')}`,thickness=stickWidth*scale;
+      return `<path d="${d}" stroke="${color}" stroke-width="${thickness+1.5}" stroke-linecap="round"/><path d="${d}" stroke="var(--background)" stroke-width="${Math.max(1,thickness-1.5)}" stroke-linecap="round"/>`;
+    };
+    const moving=arms.map(a=>a.map(q=>rotate(q,state[0],P)));
+    const pin=crankPin(crankPhase,model),o=point(model.crankCenter),tip=point(pin),touching=pinContacts(state[0],crankPhase,model).find(c=>c.gap<0.03);
+    crankScreenCenter=o;
+    const f=forces(...state,model),p=point(P),joint=rotate(model.joint,state[0],P);
+    const direction=arm=>arm[1].map((v,i)=>v-arm[0][i]);
+    let target=P,tag='P',axis=null,turn=null,selected=[];
+    switch(activeControl){
+      case 'beamX':case 'beamY':case 'beamAngle':
+        target=[design.beamX,design.beamY];tag='G';selected=[beam];
+        if(activeControl==='beamAngle')turn=direction(beam);else axis=activeControl==='beamX'?[1,0]:[0,1];break;
+      case 'hookAngle':target=model.glue;tag='';selected=[hook];turn=[Math.cos(design.hookAngle*Math.PI/180),Math.sin(design.hookAngle*Math.PI/180)];break;
+      case 'pivotT':selected=[moving[0]];axis=direction(moving[0]);break;
+      case 'beamT':selected=[beam];axis=direction(beam);break;
+      case 'join1':case 'join2':case 'angle2':
+        target=rotate(model.joint,state[0],P);tag='J';
+        selected=[moving[activeControl==='join1'?0:1]];
+        if(activeControl==='angle2')turn=direction(selected[0]);else axis=direction(selected[0]);break;
+      case 'angle':selected=moving;turn=direction(moving[0]);break;
+      case 'rotationMin':case 'rotationMax':target=P;tag='P';turn=direction(moving[0]);break;
+      case 'crankX':case 'crankY':
+        target=model.crankCenter;tag='';selected=[[model.crankCenter,pin]];axis=activeControl==='crankX'?[1,0]:[0,1];break;
+      case 'crankAngle':
+        target=model.crankCenter;tag='';selected=[[model.crankCenter,pin]];turn=direction(selected[0]);break;
+    }
+    const v=point(target),marker='url(#rubber-sim-edit-arrow)';
+    let guide=selected.map(arm=>path(arm,'var(--blue)',2,'4 4')).join('')+`<circle cx="${v[0]}" cy="${v[1]}" r="10" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
+    if(axis){
+      const length=Math.hypot(...axis),x=axis[0]/length*24,y=-axis[1]/length*24;
+      const end=(a,b)=>[Math.max(8,Math.min(width-8,a)),Math.max(8,Math.min(height-8,b))].join(',');
+      guide+=`<path d="M${end(v[0]-x,v[1]-y)} L${end(v[0]+x,v[1]+y)}" fill="none" stroke="var(--blue)" stroke-width="2" marker-start="${marker}" marker-end="${marker}"/>`;
+    }
+    if(turn){
+      const a=Math.atan2(-turn[1],turn[0]),r=Math.max(4,Math.min(25,v[0]-6,width-v[0]-6,v[1]-6,height-v[1]-6));
+      const end=t=>[v[0]+r*Math.cos(t),v[1]+r*Math.sin(t)].join(',');
+      guide+=`<path d="M${end(a-0.6)} A${r},${r} 0 0 1 ${end(a+0.6)}" fill="none" stroke="var(--blue)" stroke-width="2" marker-start="${marker}" marker-end="${marker}"/>`;
+    }
+    if(tag==='G')guide+=label(target,tag,12,-12);
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.height=`${height}px`;
+    svg.innerHTML=`<title>${controlHints[activeControl]} 角度 ${wrapped(state[0]).toFixed(1)} 度；橡筋長 ${(f.L*1000).toFixed(2)} 毫米</title><defs><marker id="rubber-sim-edit-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2" orient="auto-start-reverse"><path d="M0,0 L4,2 L0,4" fill="var(--blue)"/></marker></defs>`+
+      `<g data-context="fixed" opacity="0.5">${path(base,'var(--green)',2)+path(hook,'var(--green)',2)}<g opacity="0.4">${path(support,'var(--green)',1.5,'6 5')}</g>${stick(beam,'var(--green)')}</g>`+
+      (whiteSweepMarkup?`<g data-white-sweeps transform="matrix(${scale} 0 0 ${-scale} ${point([0,0]).join(' ')})" pointer-events="none">${whiteSweepMarkup}</g>`:'')+
+      (f.valid?`<g data-context="rubber" opacity="0.55">${path(f.path,'var(--orange)',2,f.tension>0?'':'5 4')}</g>`:'')+
+      moving.map(a=>stick(a,'var(--foreground)')).join('')+
+      (guideVisible&&groupFor[activeControl]==='crank'?`<circle data-crank-orbit cx="${o[0]}" cy="${o[1]}" r="${design.crankLength*scale}" fill="none" stroke="var(--border)" stroke-width="1"/>`:'')+
+      `<g data-crank-arm>${path([model.crankCenter,pin],'var(--purple)',3)}</g>`+
+      `<circle data-crank-center cx="${o[0]}" cy="${o[1]}" r="3.5" fill="var(--purple)"/>`+
+      `<circle data-crank-pin cx="${tip[0]}" cy="${tip[1]}" r="${design.pinRadius*scale}" fill="var(--purple)" stroke="var(--foreground)" stroke-width="1"/>`+
+      `<g opacity="0.6">${circle(model.glue,'var(--green)')}<g data-rubber-contact>${circle(f.a,'var(--green)')}</g>${circle(joint,'var(--foreground)')+(model.binding?circle(f.b,'var(--orange)'):'')}</g>`+
+      `<path d="M${p[0]-5},${p[1]}h10 M${p[0]},${p[1]-5}v10" stroke="var(--red)" stroke-width="2" opacity="0.8"/>`+
+      label(P,'P',-20,-10)+label(P,`${(state[0]*180/Math.PI).toFixed(1)}°`,12,25,true)+label(f.a,'A',0,-14)+label(joint,'J',-16,16)+(model.binding?label(f.b,'B',10,-10):'')+label(pin,'Q',10,-10,true)+
+      moving.map((arm,i)=>label(along(arm,0.15),String(i+1),-16,8,true)).join('')+
+      `<circle data-crank-handle class="cursor-interaction" cx="${tip[0]}" cy="${tip[1]}" r="22" fill="transparent"/>`+
+      `<g data-crank-center-handle>${label(model.crankCenter,'O',-18,16,true)}<circle cx="${o[0]}" cy="${o[1]}" r="12" fill="transparent"/></g>`+
+      (guideVisible?`<g data-control="${activeControl}">${guide}</g>`:'');
+    const limitPreview=!running&&['rotationMin','rotationMax'].includes(activeControl);
+    const shownAngle=rotationBounds(model)[0]===-Infinity&&!limitPreview?wrapped(state[0]):state[0]/Math.PI*180;
+    input.value=shownAngle;output.value=`${shownAngle.toFixed(1)}°`;
+    crankInput.min=clockwiseDegrees().toFixed(2);
+    if(document.activeElement!==crankInput)crankInput.value=clockwiseDegrees().toFixed(2);
+    play.disabled=drive.disabled=!f.valid;
+    updateCycleMarker();
+    if(!f.valid)status.textContent='兩棍沒有凹位，請調整夾角';
+    root.querySelector('#rubber-sim-values').textContent=`${f.valid?`橡筋 ${(f.L*1000).toFixed(2)} mm · ${f.tension>0?`拉力 ${f.tension.toFixed(2)} N`:'鬆弛'}`:'橡筋路徑無法成立'} · Q ${touching?`接觸棍 ${touching.arm}`:'離開棍邊'} · 時間 ${elapsed.toFixed(2)} s`;
+  }
+  function frame(timestamp){
+    if(!running)return;
+    if(previous!==null)carry+=Math.min((timestamp-previous)/1000,0.05)*(manualMode?1:0.25);
+    previous=timestamp;
+    while(carry>=0.001-1e-12){
+      const omega=Math.min(0,manualTarget!==null?(manualTarget-crankPhase)/Math.max(carry,0.001):driven?-design.crankRPM*Math.PI/30:0);
+      const before=state[0],result=advanceMechanism(state,crankPhase,0.001,model,omega);
+      state=result.state;crankPhase=result.phase;elapsed+=0.001;carry-=0.001;
+      if(result.jammed){
+        const message=result.reason==='limit'?'P 已到轉角限制，曲柄停下':'圓銷卡住；請調整 O 位置';
+        if(manualMode&&dragInfo){manualTarget=crankPhase;carry=0;if(status.textContent!==message)status.textContent=message;}
+        else {halt(message);save();}
+        break;
+      }
+      if(manualMode&&!dragInfo&&manualTarget!==null&&Math.abs(manualTarget-crankPhase)<1e-9)manualTarget=null;
+      const f=forces(...state,model);
+      if(!f.valid){state[1]=0;halt('兩棍沒有凹位');break;}
+      quiet=!driven&&!dragInfo&&Math.abs(state[1])<0.004&&Math.abs(state[0]-before)<1e-5?quiet+0.001:0;
+      if(quiet>0.3){halt('已停定');save();break;}
+    }
+    draw();if(running)frameId=requestAnimationFrame(frame);
+  }
+  function startMotor(useCrank){
+    if(running&&driven===useCrank){halt('已暫停');(useCrank?drive:play).textContent='繼續';save();return;}
+    halt('待放手');
+    const contact=resolvePin(state,crankPhase,useCrank?-design.crankRPM*Math.PI/30:0,model);
+    if(contact.jammed){halt('圓銷卡住；請調整 O 位置');return;}
+    state=contact.state;driven=useCrank;chooseControl(useCrank?'crankAngle':'angle');
+    if(useCrank)runCycleAnalysis();
+    running=true;previous=null;quiet=0;(useCrank?drive:play).textContent='暫停';
+    status.textContent=(useCrank?'曲柄運轉中':'運動中')+' · 慢速 0.25×';frameId=requestAnimationFrame(frame);
+  }
+  play.addEventListener('click',()=>startMotor(false));
+  drive.addEventListener('click',()=>startMotor(true));
+  cyclePanel.addEventListener('toggle',()=>analyzeButton.setAttribute('aria-expanded',String(cyclePanel.open)));
+  analyzeButton.addEventListener('click',()=>{
+    halt('分析一圈');status.textContent=runCycleAnalysis();draw();
+    cyclePanel.open=true;analyzeButton.setAttribute('aria-expanded','true');
+    cycleHeading.focus({preventScroll:true});cyclePanel.scrollIntoView({block:'nearest'});
+  });
+  function startManual(target=crankPhase){
+    if(!Number.isFinite(target))return;
+    if(!manualMode||!running){
+      halt('待手動');manualMode=true;driven=false;running=true;previous=null;quiet=0;
+      chooseControl('crankAngle');frameId=requestAnimationFrame(frame);
+    }
+    manualTarget=Math.min(target,crankPhase);status.textContent='手動順時針轉動 · 跟隨你的速度';
+  }
+  function pointerBearing(event){
+    const rect=svg.getBoundingClientRect(),x=event.clientX-rect.left-crankScreenCenter[0],y=crankScreenCenter[1]-(event.clientY-rect.top);
+    return Math.hypot(x,y)<0.5?null:Math.atan2(y,x);
+  }
+  function pointerWorld(event){
+    const rect=svg.getBoundingClientRect();
+    return [canvasMap.minX+(event.clientX-rect.left-canvasMap.left)/canvasMap.scale,canvasMap.maxY-(event.clientY-rect.top-24)/canvasMap.scale];
+  }
+  svg.addEventListener('pointerdown',event=>{
+    if(dragInfo||event.button!==0)return;
+    const center=event.target.closest('[data-crank-center-handle]');
+    if(!center&&!event.target.closest('[data-crank-handle]'))return;
+    if(center){
+      const point=pointerWorld(event);halt('移動 O');state[1]=0;chooseControl('crankX');
+      dragInfo={id:event.pointerId,type:'center',offset:point.map((v,i)=>v-model.crankCenter[i])};
+    }else{
+      const bearing=pointerBearing(event);if(bearing===null)return;
+      halt('待手動');startManual();dragInfo={id:event.pointerId,type:'pin',bearing};
+    }
+    event.preventDefault();
+    svg.setPointerCapture(event.pointerId);svg.setAttribute('data-dragging','true');
+  });
+  svg.addEventListener('pointermove',event=>{
+    if(!dragInfo||event.pointerId!==dragInfo.id)return;
+    if(dragInfo.type==='center'){
+      const point=pointerWorld(event).map((v,i)=>v-dragInfo.offset[i]);
+      moveCrankCenter(point);syncControls();draw();
+      event.preventDefault();return;
+    }
+    const bearing=pointerBearing(event);if(bearing===null)return;
+    manualTarget+=Math.min(0,angleDelta(bearing,dragInfo.bearing));dragInfo.bearing=bearing;event.preventDefault();
+  });
+  function finishDrag(event){
+    if(!dragInfo||event.pointerId!==dragInfo.id)return;
+    dragInfo=null;svg.setAttribute('data-dragging','false');
+    if(svg.hasPointerCapture(event.pointerId))svg.releasePointerCapture(event.pointerId);
+    save();
+  }
+  for(const event of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(event,finishDrag);
+  crankInput.addEventListener('focus',()=>{halt('待手動');chooseControl('crankAngle');});
+  crankInput.addEventListener('change',()=>{
+    const degrees=Number(crankInput.value);
+    if(crankInput.value.trim()!==''&&Number.isFinite(degrees)){
+      const target=Math.max(degrees,clockwiseDegrees());crankInput.value=target.toFixed(2);
+      startManual((design.crankAngle-target)/180*Math.PI);
+    }
+  });
+  crankInput.addEventListener('keydown',event=>{
+    if(!['ArrowUp','ArrowDown'].includes(event.key))return;
+    event.preventDefault();if(event.key==='ArrowDown')return;
+    const target=(manualTarget??crankPhase)-Math.PI/180;
+    crankInput.value=(design.crankAngle-target/Math.PI*180).toFixed(2);startManual(target);
+  });
+  for(const event of ['focus','pointerenter'])input.addEventListener(event,()=>chooseControl('angle',true));
+  input.addEventListener('input',()=>{halt('待放手');state=limitRotation([Number(input.value)*Math.PI/180,0],model);elapsed=0;invalidateCycle();chooseControl('angle',true);});
+  input.addEventListener('change',save);
+  home.addEventListener('click',()=>{halt('待放手');restore(loadInitial());chooseControl('rotationMin');save();});
+  root.querySelector('#rubber-sim-store-initial').addEventListener('click',()=>{
+    halt('待放手');state[1]=0;chooseControl(activeControl);
+    try{
+      localStorage.setItem(initialStorageKey,JSON.stringify({modelContent:snapshot(),privateContent:{control:activeControl}}));
+      save();status.textContent='已保存為初始配置';
+    }catch{status.textContent='無法保存初始配置；請檢查瀏覽器儲存設定後重試。';}
+  });
+  window.addEventListener('storage',event=>{
+    if(event.key!==storageKey)return;
+    const incoming=parseSaved(event.newValue);
+    const encoded=JSON.stringify(incoming?.modelContent);
+    if([10,11,12,13].includes(incoming?.modelContent?.version)&&encoded!==lastSaved&&encoded!==JSON.stringify(snapshot())){halt('待放手');restore(incoming);chooseControl(activeControl);}
+  });
+  restore(loadInitial()||loadSaved());chooseControl('rotationMin');
+  runCycleAnalysis();
+  draw();
+  // 只跟隨寬度；下一個畫格才寫入尺寸，避免 ResizeObserver 重繪自己的高度。
+  window.addEventListener('resize',()=>requestAnimationFrame(draw));
+  let observedWidth=svg.getBoundingClientRect().width;
+  new ResizeObserver(([entry])=>{
+    const width=entry.contentRect.width;
+    if(Math.abs(width-observedWidth)<0.5)return;
+    observedWidth=width;requestAnimationFrame(draw);
+  }).observe(svg);
+})();
+</script>
+</body>
+</html>
