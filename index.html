@@ -45,6 +45,14 @@ h3 { font-size: 1rem; }
 }
 .simulation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--border); }
 .viz-controls { display: flex; align-items: center; gap: 12px; }
+.speed-control { display: grid; width: 160px; gap: 2px; font-size: .8rem; }
+.speed-label { display: flex; justify-content: space-between; }
+.speed-slider { width: 100%; height: 32px; margin: 0; padding: 0; appearance: none; background: transparent; cursor: pointer; touch-action: pan-y; }
+.speed-slider::-webkit-slider-runnable-track { height: 4px; background: var(--input); border-radius: 2px; }
+.speed-slider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; border: 0; border-radius: 50%; background: var(--purple); appearance: none; }
+.speed-slider::-moz-range-track { height: 4px; background: var(--input); border-radius: 2px; }
+.speed-slider::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--purple); }
+@media (pointer: coarse) { .speed-slider { height: 44px; } }
 .btn, .toolbar-summary { min-height: 44px; padding: 9px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 .btn { transition: transform 160ms ease-out, background-color 160ms ease-out; }
 .btn:active:enabled { transform: scale(.97); }
@@ -119,7 +127,8 @@ h3 { font-size: 1rem; }
   :root { font-size: 16px; }
   .simulation-toolbar { flex-wrap: wrap; }
   h1 { flex-basis: 100%; }
-  .viz-controls { width: 100%; justify-content: space-between; }
+  .viz-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .speed-control { order: 5; width: 100%; }
   .btn, .toolbar-summary { padding-inline: 12px; }
   .position-controls { position: fixed; top: 132px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 200px); }
   .tools-content { width: min(300px,90vw); }
@@ -135,6 +144,7 @@ h3 { font-size: 1rem; }
     <div class="viz-controls">
       <label class="mode-switch"><input id="rubber-sim-edit-structure" type="checkbox"><span>調整結構</span></label>
       <button class="btn btn-primary" id="rubber-sim-drive" type="button">啟動曲柄</button>
+      <label class="speed-control" for="rubber-sim-crankRPM"><span class="speed-label"><span>曲柄速度</span><output id="rubber-sim-speed-value" class="tabular-nums">60 rpm</output></span><input class="speed-slider" id="rubber-sim-crankRPM" type="range" min="0" max="120" step="1" value="60" aria-label="曲柄速度（rpm）"></label>
       <details class="precision" id="rubber-sim-precision">
         <summary class="toolbar-summary">數值</summary>
         <section class="position-controls" aria-labelledby="rubber-sim-settings-heading">
@@ -176,7 +186,7 @@ h3 { font-size: 1rem; }
           <button class="btn" id="rubber-sim-fit" type="button">重新置中模型</button>
           <button class="btn" id="rubber-sim-home" type="button">還原配置</button>
           <button class="btn" id="rubber-sim-store-initial" type="button">設為本機初始配置</button>
-                <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。直徑 3 mm 的圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
+                <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長上限 90 mm、硬度 180 N/m；原長自動縮短至不超過可轉範圍最短距離的 80%，保持預拉；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 60 轉，以實時速度播放；速度 slider 可在 0–120 rpm 之間即時調整。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。直徑 3 mm 的圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
         </div>
       </details>
     </div>
@@ -206,7 +216,7 @@ h3 { font-size: 1rem; }
 <script>
 (() => {
   // BEGIN PHYSICS
-  const defaults={mass:0.040,k:100,rest:0.100,damping:0.0003,gravity:9.81};
+  const defaults={mass:0.040,k:180,rest:0.090,damping:0.0003,gravity:9.81};
   const hookBaseAngle=Math.atan2(12.735+1.751,5.007-18.796)*180/Math.PI;
   const controls={
     hook:[
@@ -232,7 +242,7 @@ h3 { font-size: 1rem; }
       ['crankLength','曲柄 O–Q 長度',21,21,0.1,21,'mm'],
       ['pinRadius','Q 圓銷半徑',1.5,1.5,0.1,1.5,'mm'],
       ['crankAngle','曲柄起始／目前角度',-180,180,0.1,90,'°'],
-      ['crankRPM','順時針轉速',-60,60,0.1,30,'rpm']
+      ['crankRPM','順時針轉速',-120,120,1,60,'rpm']
     ]
   };
   const limitFields=[['rotationMin','P 最小角度',-50,50,0.1,-50,'°'],['rotationMax','P 最大角度',-50,50,0.1,50,'°']];
@@ -341,7 +351,14 @@ h3 { font-size: 1rem; }
     const boundsPoints=[...base,...support,...beam,...hook,[P[0]-radius,P[1]-radius],[P[0]+radius,P[1]+radius],crankCenter.map(v=>v-crankReach),crankCenter.map(v=>v+crankReach)];
     const bounds=[0,1].map(i=>[Math.min(...boundsPoints.map(q=>q[i]))-12,Math.max(...boundsPoints.map(q=>q[i]))+12]);
     const A=hookBoardContact(hook,base);
-    return {design:d,P,A,arms,joint,binding,com,inertiaPerMass,beam,base,support,hook,glue,contact,beamLimits,bounds,radius,crankCenter};
+    // A 至旋轉中的 B：距離最小值只會在角度邊界或兩個向量同向時出現。
+    const min=d.rotationMin*Math.PI/180,max=d.rotationMax*Math.PI/180,angles=[min,max];
+    const v=(binding?.notch||joint).map((n,i)=>n-P[i]),a=A.map((n,i)=>n-P[i]);
+    const aligned=Math.atan2(cross(v,a),v[0]*a[0]+v[1]*a[1]);
+    const closest=aligned+Math.ceil((min-aligned)/(2*Math.PI))*2*Math.PI;
+    if(closest<=max)angles.push(closest);
+    const rubberRestLimit=binding?0.8*Math.min(...angles.map(t=>distance(A,rotate(binding.notch,t,P))))/1000:0;
+    return {design:d,P,A,arms,joint,binding,com,inertiaPerMass,beam,base,support,hook,glue,contact,beamLimits,bounds,radius,crankCenter,rubberRestLimit};
   }
   const defaultGeometry=buildGeometry();
   function rotate(q,t,P){const x=q[0]-P[0],y=q[1]-P[1],c=Math.cos(t),s=Math.sin(t);return[P[0]+x*c-y*s,P[1]+x*s+y*c];}
@@ -360,11 +377,12 @@ h3 { font-size: 1rem; }
     const b=rotate(binding?.notch||joint,t,P),rx=(b[0]-P[0])/1000,ry=(b[1]-P[1])/1000;
     const a=A,dx=(a[0]-b[0])/1000,dy=(a[1]-b[1])/1000,L=binding?Math.hypot(dx,dy):0;
     // ponytail: 橡筋採只受拉的線性模型；實測力－伸長曲線取得後才換成非線性模型。
-    const tension=Math.max(0,params.k*(L-params.rest));
+    // 每個配置固定原長；原長不超過可轉範圍最短距離的 80%，力矩及能量共用同一原長。
+    const rest=Math.min(params.rest,g.rubberRestLimit),extension=Math.max(0,L-rest),tension=params.k*extension;
     const spring=L>1e-12?tension*(rx*dy-ry*dx)/L:0;
     const cx=com[0]*Math.cos(t)-com[1]*Math.sin(t),cy=com[0]*Math.sin(t)+com[1]*Math.cos(t);
     const torque=spring-params.mass*params.gravity*cx-params.damping*w;
-    return {a,b,path:binding?[a,b]:[],valid:!!binding,L,tension,spring,torque,acceleration:torque/(params.mass*inertiaPerMass),energy:0.5*params.mass*inertiaPerMass*w*w+0.5*params.k*Math.max(0,L-params.rest)**2+params.mass*params.gravity*cy};
+    return {a,b,path:binding?[a,b]:[],valid:!!binding,L,rest,tension,spring,torque,acceleration:torque/(params.mass*inertiaPerMass),energy:0.5*params.mass*inertiaPerMass*w*w+0.5*params.k*extension**2+params.mass*params.gravity*cy};
   }
   function step(state,dt,g=defaultGeometry,params=defaults){
     const derivative=q=>[q[1],forces(q[0],q[1],g,params).acceleration];
@@ -531,6 +549,7 @@ h3 { font-size: 1rem; }
   const phaseLabels={contact:'Q 接觸／推棍',return:'Q 離開／橡筋收縮',free:'Q 離開／其他狀態'};
   const phaseColors={contact:'var(--purple)',return:'var(--orange)',free:'var(--muted-foreground)'};
   const crankInput=root.querySelector('#rubber-sim-crankAngle');
+  const speedInput=root.querySelector('#rubber-sim-crankRPM'),speedOutput=root.querySelector('#rubber-sim-speed-value');
   const wrapped=t=>((t*180/Math.PI+180)%360+360)%360-180;
   const clockwiseDegrees=()=>Math.max(0,design.crankAngle-crankPhase/Math.PI*180);
   const snapshot=()=>({version:13,angle:state[0]/Math.PI*180,crankAngle:crankPhase/Math.PI*180,design:{...design}});
@@ -584,7 +603,7 @@ h3 { font-size: 1rem; }
       join1:39.1,join2:38.2,angle2:-45.5,
       beamX:123.6,beamY:106,beamAngle:9.49,
       crankX:121.56818475836813,crankY:44.01606536134669,
-      crankLength:21,pinRadius:1.5,crankAngle:90,crankRPM:30,
+      crankLength:21,pinRadius:1.5,crankAngle:90,crankRPM:60,
       rotationMin:-9.8,rotationMax:50
     }
   };
@@ -617,7 +636,7 @@ h3 { font-size: 1rem; }
     const pointer=dragInfo?.id;dragInfo=null;manualMode=false;manualTarget=null;
     if(pointer!==undefined&&svg.hasPointerCapture(pointer))svg.releasePointerCapture(pointer);
     svg.setAttribute('data-dragging','false');running=false;cancelAnimationFrame(frameId);previous=null;carry=0;quiet=0;
-    play.textContent='放手';drive.textContent='啟動曲柄';status.textContent=message+' · 慢速 0.25×';
+    play.textContent='放手';drive.textContent='啟動曲柄';status.textContent=message;
   }
   const fieldInputs=new Map();
   for(const [group,items] of Object.entries(controls)){
@@ -677,6 +696,7 @@ h3 { font-size: 1rem; }
   root.querySelector('#rubber-sim-fit').addEventListener('click',()=>{canvasBounds=null;tools.open=false;draw();});
   root.addEventListener('keydown',event=>{if(event.key==='Escape'){tools.open=precision.open=cyclePanel.open=false;}});
   function syncControls(){
+    speedInput.value=design.crankRPM;speedOutput.value=`${design.crankRPM} rpm`;
     for(const [key,label,min,max,step,value,unit] of fields){
       const entry=fieldInputs.get(key);if(!entry)continue;
       if(key==='beamX'){entry.slider.min=Math.ceil(model.beamLimits.minX*10)/10;entry.slider.max=Math.floor(model.beamLimits.maxX*10)/10;}
@@ -795,7 +815,7 @@ h3 { font-size: 1rem; }
   }
   function frame(timestamp){
     if(!running)return;
-    if(previous!==null)carry+=Math.min((timestamp-previous)/1000,0.05)*(manualMode?1:0.25);
+    if(previous!==null)carry+=Math.min((timestamp-previous)/1000,0.05);
     previous=timestamp;
     while(carry>=0.001-1e-12){
       const omega=Math.min(0,manualTarget!==null?(manualTarget-crankPhase)/Math.max(carry,0.001):driven?-design.crankRPM*Math.PI/30:0);
@@ -824,10 +844,17 @@ h3 { font-size: 1rem; }
     state=contact.state;driven=useCrank;chooseControl(useCrank?'crankAngle':'angle');
     if(useCrank)runCycleAnalysis();
     running=true;previous=null;quiet=0;(useCrank?drive:play).textContent='暫停';
-    status.textContent=(useCrank?'曲柄運轉中':'運動中')+' · 慢速 0.25×';frameId=requestAnimationFrame(frame);
+    status.textContent=useCrank?`曲柄運轉中 · ${design.crankRPM} rpm`:'橡筋回彈中';frameId=requestAnimationFrame(frame);
   }
   play.addEventListener('click',()=>startMotor(false));
   drive.addEventListener('click',()=>startMotor(true));
+  speedInput.addEventListener('input',()=>{
+    if(String(speedInput.value).trim()===''||!Number.isFinite(Number(speedInput.value)))return;
+    design.crankRPM=Math.round(Math.max(0,Math.min(120,Number(speedInput.value))));
+    rebuild();syncControls();draw();
+    if(!manualMode)status.textContent=running&&driven?`曲柄運轉中 · ${design.crankRPM} rpm`:`曲柄速度 · ${design.crankRPM} rpm`;
+  });
+  speedInput.addEventListener('change',save);
   cyclePanel.addEventListener('toggle',()=>{analyzeButton.setAttribute('aria-expanded',String(cyclePanel.open));draw();});
   analyzeButton.addEventListener('click',()=>{
     tools.open=false;precision.open=false;halt('分析一圈');status.textContent=runCycleAnalysis();

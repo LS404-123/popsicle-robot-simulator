@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const file=require('node:path').join(__dirname,'index.html');
 const html=fs.readFileSync(file,'utf8');
-assert.ok(!/type="range"/.test(html),'介面不再使用 slider');
+assert.equal((html.match(/type="range"/g)||[]).length,1,'只保留使用者要求的曲柄速度 slider');
 assert.ok(!html.includes('rubber-sim-select-'),'移除六個部件選擇按鈕');
 assert.ok(html.startsWith('<!doctype html>')&&html.includes('<html lang="zh-Hant">'),'交付必須是完整的繁體中文網頁');
 assert.ok(!/<iframe\b|data-srcdoc=|window\.openai|<script[^>]+src=/i.test(html),'網頁須直接執行，不依賴內嵌 demo、ChatGPT 或外部程式');
@@ -30,7 +30,8 @@ for(let i=0;i<2;i++)near(s.defaultGeometry.binding.notch[i],upperCrossing[i],1e-
 assert.equal(initialForce.path.length,2,'橡筋只連接 A 接觸點及 B 凹位');
 near(initialForce.L,Math.hypot(...s.defaultGeometry.binding.notch.map((v,i)=>(v-initialForce.a[i])/1000)),1e-12);
 assert.ok(s.forces(0,0).spring<0&&s.forces(0,0).acceleration<0,'初始姿勢放手後須先順時針轉動');
-near(s.forces(0,0,s.defaultGeometry,{...s.defaults,rest:0.2}).tension,0,1e-12);
+assert.ok(s.forces(0,0,s.defaultGeometry,{...s.defaults,rest:0.2}).tension>0,'原長仍須受預拉上限限制，不能令橡筋鬆弛');
+assert.ok(s.forces(0,0).tension>1.5*s.forces(0,0,s.defaultGeometry,{...s.defaults,k:100,rest:0.100}).tension,'加強後拉力須明顯高於原設定');
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const distanceToSegment=(p,a,b)=>{
   const dx=b[0]-a[0],dy=b[1]-a[1];
@@ -56,7 +57,7 @@ function checkRubber(g,t){
   near(distance(f.a,g.A),0,1e-9);
   near(f.a[1],g.base[2][1],1e-12);
   near(f.L,distance(f.a,f.b)/1000,1e-12);
-  near(f.tension,Math.max(0,s.defaults.k*(distance(f.a,f.b)/1000-s.defaults.rest)),1e-12);
+  near(f.tension,Math.max(0,s.defaults.k*(distance(f.a,f.b)/1000-Math.min(s.defaults.rest,g.rubberRestLimit))),1e-12);
   for(const arm of g.arms){
     const L=distance(...arm),a=s.along(arm,s.stickWidth/2/L),b=s.along(arm,1-s.stickWidth/2/L);
     const contactDistance=distanceToSegment(g.binding.notch,a,b);
@@ -91,6 +92,14 @@ function checkAttachments(g){
 const variants=[s.defaultGeometry];
 for(const [key,label,min,max] of s.fields){
   variants.push(s.buildGeometry({...s.designDefaults,[key]:min}),s.buildGeometry({...s.designDefaults,[key]:max}));
+}
+let tautCases=0;
+assert.ok(variants.some(g=>g.binding&&g.rubberRestLimit<s.defaults.rest),'檢查須包含原先會鬆弛的短距離配置');
+for(const g of variants)if(g.binding){
+  for(let i=0;i<=200;i++){
+    const angle=(g.design.rotationMin+(g.design.rotationMax-g.design.rotationMin)*i/200)*Math.PI/180;
+    const f=s.forces(angle,0,g);assert.ok(f.tension>0&&f.rest<f.L,'整個可轉範圍內橡筋必須拉緊');tautCases++;
+  }
 }
 for(const g of variants){
   checkAttachments(g);
@@ -201,11 +210,11 @@ assert.ok(contactSteps>100&&clearSteps>0,`預設曲柄須有推棍及初始分�
 assert.ok(crankCycles.every(c=>c.contact>0),`預設曲柄每圈都須推棍：${JSON.stringify(crankCycles)}`);
 assert.ok(maxAngle-minAngle>Math.PI/9,'曲柄應推動白棍繞 P 轉動超過 20 度');
 // 移動 O 後，21mm 順時針曲柄仍須能在每圈分離，讓橡筋拉回。
-const returnGeometry=unrestricted(s.buildGeometry({...s.designDefaults,crankX:70,crankY:80}));
+const returnGeometry=unrestricted(s.buildGeometry({...s.designDefaults,crankX:70,crankY:80,crankRPM:30})),returnOmega=-Math.PI;
 let returnState=[0,0],returnPhase=Math.PI/2;
 const returnCycles=Array.from({length:3},()=>({contact:0,clear:0,rubberReturn:0}));
 for(let i=0;i<6000;i++){
-  const result=s.advanceMechanism(returnState,returnPhase,.001,returnGeometry,omega);
+  const result=s.advanceMechanism(returnState,returnPhase,.001,returnGeometry,returnOmega);
   assert.equal(result.jammed,false);returnState=result.state;returnPhase=result.phase;
   const cycle=returnCycles[Math.floor(i/2000)];result.touching?cycle.contact++:cycle.clear++;
   if(!result.touching&&returnState[1]<-.01&&s.forces(...returnState,returnGeometry).spring<0)cycle.rubberReturn++;
@@ -313,7 +322,13 @@ const initialStorageKey=`${storageKey}:initial`;
 const initialSaved={modelContent:{version:3,angle:60.7,design:{px:86.67402113077394,py:96.91483985701933,bandArm:2,bandT:95,bandSide:4}},privateContent:{control:'bandSide'}};
 // 接觸及手勢回歸沿用原參照配置；另行檢查 GitHub 共用初始配置。
 const baselineInitial={modelContent:{version:13,angle:0,crankAngle:90,design:s.designDefaults}};
-const publishedDesign={hookAngle:133.8,pivotT:54.1,beamT:38,join1:39.1,join2:38.2,angle2:-45.5,beamX:123.6,beamY:106,beamAngle:9.49,crankX:121.56818475836813,crankY:44.01606536134669,crankLength:21,pinRadius:1.5,crankAngle:90,crankRPM:30,rotationMin:-9.8,rotationMax:50};
+const publishedDesign={hookAngle:133.8,pivotT:54.1,beamT:38,join1:39.1,join2:38.2,angle2:-45.5,beamX:123.6,beamY:106,beamAngle:9.49,crankX:121.56818475836813,crankY:44.01606536134669,crankLength:21,pinRadius:1.5,crankAngle:90,crankRPM:60,rotationMin:-9.8,rotationMax:50};
+// 真正共用配置在預設及最高轉速須可離開接觸、由橡筋拉回，而非只在慢速通過。
+for(const rpm of [60,120]){
+  const g=s.buildGeometry({...publishedDesign,crankRPM:rpm}),report=s.analyzeCrankCycle([-9.8*Math.PI/180,0],-2336.76*Math.PI/180,g);
+  assert.equal(report.complete,true,`${rpm} rpm 須能完成一圈`);
+  assert.ok(report.segments.some(p=>p.kind==='contact')&&report.segments.some(p=>p.kind==='return'&&p.toAngle<p.fromAngle-10),`${rpm} rpm 離開後須有明顯回彈`);
+}
 const storageValues=new Map([[storageKey,JSON.stringify(initialSaved)],[initialStorageKey,JSON.stringify(baselineInitial)]]);
 const localStorage={
   getItem:key=>{assert.ok([storageKey,initialStorageKey].includes(key));return storageValues.get(key)??null;},
@@ -345,7 +360,7 @@ function checkRubberSvg(){
 checkRubberSvg();
 assert.ok(elements.get('rubber-sim-cycle-segments').content.includes('data-phase="contact"'));
 assert.ok(elements.get('rubber-sim-cycle-segments').content.includes('data-phase="return"'));
-assert.ok(elements.get('rubber-sim-cycle-note').textContent.includes('30.0 rpm'));
+assert.ok(elements.get('rubber-sim-cycle-note').textContent.includes(`${s.designDefaults.crankRPM.toFixed(1)} rpm`));
 assert.ok(elements.get('rubber-sim-cycle-ranges').content.includes('360.0°'));
 assert.ok(elements.get('rubber-sim-cycle-ranges').content.includes('白棍')&&elements.get('rubber-sim-cycle-ranges').content.includes('起點'));
 assert.ok(!elements.get('.mechanism').content.includes('data-white-swept-area='),'未開分析時不要讓陰影遮住模型');
@@ -494,7 +509,7 @@ near(Number(elements.get('rubber-sim-crankAngle').value),110,1e-9);
 assert.notEqual(pinDrawing(),pausedPin,'保存的曲柄角度須可還原');
 elements.get('rubber-sim-home').events.get('click')();
 near(Number(elements.get('rubber-sim-crankAngle').value),0,1e-9);
-assert.ok(!elements.has('rubber-sim-pinRadius')&&!elements.has('rubber-sim-crankRPM'),'曲柄須移除多餘的大小及轉速 slider');
+assert.ok(!elements.has('rubber-sim-pinRadius')&&elements.has('rubber-sim-crankRPM'),'曲柄保留速度 slider，Q 大小固定');
 assert.ok(!elements.has('rubber-sim-crankLength'),'O–Q 固定 21mm，不能再改長度');
 assert.equal(visibleFields.filter(([key])=>key.startsWith('crank')).length,2,'曲柄只保留 O 圓心 X、Y 兩條 slider');
 const rangeMin=elements.get('rubber-sim-rotationMin'),rangeMax=elements.get('rubber-sim-rotationMax');
@@ -856,5 +871,24 @@ near(savedState.modelContent.crankAngle,-2336.76,1e-9);
 editValue('join1',42);reload();near(Number(elements.get('rubber-sim-join1').value),42,1e-12,'有效本機配置優先於 GitHub 初始配置');
 elements.get('rubber-sim-home').events.get('click')();checkPublished();
 storageValues.set(storageKey,JSON.stringify(initialSaved));reload();checkPublished();
-console.log(JSON.stringify({result:'通過',tabletCases,initialConfiguration:publishedDesign,whiteRodRangeDegrees:[-50,50],whiteSwingDegrees:cycleReport.segments.map(s=>({phase:s.kind,from:s.fromAngle,to:s.toAngle,min:s.minAngle,max:s.maxAngle})),desktopStickPixels,crank:{contactSteps,clearSteps,strokeDegrees:(maxAngle-minAngle)*180/Math.PI,cycleSegments:cycleReport.segments},stickSizeMm:[114,10],baseLengthMm:210,sliders:0,geometryVariants:variants.length,attachmentSweep:292,notchSweep,canvasCases,energyDrift,checks:['零 slider／圖上拖白棍及上下限／G、P、J 滑動／棍端轉角／數值防空白／方向鍵／多指保護／明確置中','GitHub 共用配置／新裝置載入／還原／本機試調優先／失效舊快照回退','平板橫直四尺寸／畫布格高度及置中／帶邊距拖 O 推棍／分析不縮放／尺寸通知不循環','原生獨立 HTML／沒有 iframe 或 ChatGPT 依賴／本機配置相容','大視窗圖像放大／高度調整／調 P 時固定件不縮放','曲柄只順時針／連續三圈／逆向手勢及輸入不反轉／拖 O 與高度限制','拖 O 及 X/Y slider 推白棍／大幅移動不穿透／P 擋位停止 O','白棍集中 ±50°／P 面板預設／舊保存角度收窄／圖上上下限預覽／碰擋位時停止','分析按鈕展開結果／焦點與捲動／完成提示／無凹位或擋位亦顯示原因',
+// 速度 slider 即時改轉速，維持當前姿勢及運轉，並按實時秒數推進。
+loadClear();const speed=elements.get('rubber-sim-crankRPM');
+speed.value='60';speed.events.get('input')();
+assert.equal(elements.get('rubber-sim-speed-value').value,'60 rpm');
+drive.events.get('click')();
+const tick=time=>{const [id,callback]=frames.entries().next().value;frames.delete(id);callback(time);};
+const phaseAtStart=Number(elements.get('rubber-sim-crankAngle').value);tick(0);tick(20);
+const phaseSlow=Number(elements.get('rubber-sim-crankAngle').value);
+near(phaseSlow-phaseAtStart,7.2,0.02,'60 rpm 在 20 ms 應順時針轉 7.2°，不可偷偷慢播');
+const poseAtChange=Number(elements.get('rubber-sim-angle').value);
+speed.value='120';speed.events.get('input')();speed.events.get('change')();
+near(Number(elements.get('rubber-sim-angle').value),poseAtChange,1e-12,'改轉速不能重設白棍姿勢');
+assert.ok(frames.size>0,'改轉速不應暫停運轉');assert.equal(savedState.modelContent.design.crankRPM,120);
+tick(40);near(Number(elements.get('rubber-sim-crankAngle').value)-phaseSlow,14.4,0.02);
+speed.value='0';speed.events.get('input')();const stoppedAt=Number(elements.get('rubber-sim-crankAngle').value);
+tick(60);near(Number(elements.get('rubber-sim-crankAngle').value),stoppedAt,1e-12,'0 rpm 只停止曲柄，白棍仍可受橡筋拉回');
+speed.value='1000';speed.events.get('input')();speed.events.get('change')();assert.equal(savedState.modelContent.design.crankRPM,120);
+speed.value='-10';speed.events.get('input')();assert.equal(Number(speed.value),0,'滑桿數值不能令曲柄逆轉');
+drive.events.get('click')();
+console.log(JSON.stringify({result:'通過',tabletCases,initialConfiguration:publishedDesign,whiteRodRangeDegrees:[-50,50],whiteSwingDegrees:cycleReport.segments.map(s=>({phase:s.kind,from:s.fromAngle,to:s.toAngle,min:s.minAngle,max:s.maxAngle})),desktopStickPixels,crank:{contactSteps,clearSteps,strokeDegrees:(maxAngle-minAngle)*180/Math.PI,cycleSegments:cycleReport.segments},stickSizeMm:[114,10],baseLengthMm:210,sliders:1,tautCases,geometryVariants:variants.length,attachmentSweep:292,notchSweep,canvasCases,energyDrift,checks:['預拉全範圍有拉力／力矩與能量同步／實時轉速／運轉中變速及 0 rpm','只有速度 slider／圖上拖白棍及上下限／G、P、J 滑動／棍端轉角／數值防空白／方向鍵／多指保護／明確置中','GitHub 共用配置／新裝置載入／還原／本機試調優先／失效舊快照回退','平板橫直四尺寸／畫布格高度及置中／帶邊距拖 O 推棍／分析不縮放／尺寸通知不循環','原生獨立 HTML／沒有 iframe 或 ChatGPT 依賴／本機配置相容','大視窗圖像放大／高度調整／調 P 時固定件不縮放','曲柄只順時針／連續三圈／逆向手勢及輸入不反轉／拖 O 與高度限制','拖 O 及 X/Y slider 推白棍／大幅移動不穿透／P 擋位停止 O','白棍集中 ±50°／P 面板預設／舊保存角度收窄／圖上上下限預覽／碰擋位時停止','分析按鈕展開結果／焦點與捲動／完成提示／無凹位或擋位亦顯示原因',
 '白棍起止及極值角度／繞 P 掃過實際棍身範圍／回拉與推動分色／分析不改姿勢','曲柄圓周運動／推棍接觸／離開後不拉棍／阻擋 P 時停下','圓銷不穿棍／啟動與暫停／曲柄角度保存','截圖九值初始／還原／新設定保存','舊快照不覆蓋新初始配置','固定視野／P 移位不改變綠色件座標及大小','P 移位固定視野／明確置中／G 可直接調整','A–B 直線連接／拉力按直線長度','SVG 只含 A、B 兩端／無繞棍路徑','三支長棍同尺寸／底板 210 mm','支架及位置設定限制在底板內','上方外沿交點 B／與 J 分開／轉動後保留同一交點','外沿接觸／沒有凹位時停止放手','底板鎖定','數值與圖形標記同步','部件切換／移位箭嘴／轉角弧線','尺寸通知不循環重繪','本機儲存失敗／損壞資料處理','保存新初始配置／還原及重新載入／試調不覆蓋／失敗保留原值','A 棍與底板上邊凹角／改棍角度重算交界／力矩與能量同步','支架貼住圓頭棍／連接底板','雙棍接合與慣量','力矩／能量／阻尼停定'],settledDegrees:q[0]*180/Math.PI}));
