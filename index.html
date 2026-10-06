@@ -26,238 +26,182 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--foreground); line-height: 1.5; }
-button, input { font: inherit; color: inherit; }
-button, input[type="range"], summary { cursor: pointer; }
+button, input, select, summary { font: inherit; color: inherit; }
+button, summary, select { cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
-button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; }
+:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; }
 ::selection { background: var(--purple); color: var(--background); }
-h1, h3 { margin: 0; font-weight: 600; line-height: 1.35; }
-h1 { font-size: 1.5rem; }
-h3 { font-size: 1.15rem; }
+h1, h3 { margin: 0; font-weight: 600; line-height: 1.3; }
+h1 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
 [hidden] { display: none !important; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
-.text-small { font-size: .875rem; }
+.text-small { font-size: .85rem; }
 .text-muted { color: var(--muted-foreground); }
-#rubber-arm-simulation { min-height: 100svh; }
-.simulation-toolbar { padding: 20px 32px; border-bottom: 1px solid var(--border); }
-.workbench-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px 32px; }
-.viz-controls, .viz-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.rotation-controls { margin-top: 16px; }
-.cycle-analysis { max-width: 960px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-.cycle-analysis summary { width: fit-content; min-height: 44px; padding-block: 8px; font-size: 1.15rem; font-weight: 600; }
-.cycle-content { display: grid; gap: 12px; padding-block: 12px; }
+#rubber-arm-simulation {
+  display: grid; grid-template-rows: auto minmax(0,1fr) auto;
+  height: 100vh; height: 100dvh; min-height: 480px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.simulation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+.viz-controls { display: flex; align-items: center; gap: 12px; }
+.btn, .toolbar-summary { min-height: 44px; padding: 9px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.btn { transition: transform 160ms ease-out, background-color 160ms ease-out; }
+.btn:active:enabled { transform: scale(.97); }
+.btn-primary { background: var(--purple); color: var(--background); border-color: var(--purple); font-weight: 600; }
+@media (hover: hover) { .btn:hover:enabled, .toolbar-summary:hover { background: #303237; } .btn-primary:hover:enabled { background: #d4bbff; } }
+.mode-switch { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .9rem; cursor: pointer; white-space: nowrap; }
+.mode-switch input { width: 20px; height: 20px; margin: 0; accent-color: var(--purple); }
+.tools, .precision { position: relative; }
+.toolbar-summary { display: block; list-style: none; font-size: .9rem; }
+.toolbar-summary::-webkit-details-marker { display: none; }
+.tools-content, .position-controls, .cycle-analysis {
+  position: absolute; z-index: 5; width: 340px; max-height: calc(100dvh - 140px); overflow: auto;
+  padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  scrollbar-color: var(--input) var(--surface); overscroll-behavior: contain;
+}
+.tools-content, .position-controls { right: 0; top: calc(100% + 12px); }
+.tools-content { width: 300px; display: grid; gap: 8px; }
+.tools-content > .btn { text-align: left; background: transparent; }
+.position-controls { display: grid; gap: 16px; }
+.component-selector { width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--input); border-radius: 6px; background: var(--background); }
+.simulation-preview { position: relative; display: grid; grid-template-rows: minmax(0,1fr) auto; min-height: 0; min-width: 0; padding: 12px 20px 0; }
+.canvas-viewport { min-width: 0; min-height: 0; }
+.mechanism { display: block; width: 100%; overflow: hidden; touch-action: none; }
+.mechanism text { fill: var(--muted-foreground); font-size: 18px; }
+.mechanism text.primary-label { fill: var(--foreground); }
+.mechanism [data-edit-handle], .mechanism [data-crank-handle], .mechanism [data-crank-center-handle] { cursor: grab; touch-action: none; }
+.mechanism [data-edit-handle]:focus-visible { outline: none; }
+.mechanism path[data-edit-handle]:focus-visible { stroke: var(--purple); stroke-width: 3; }
+.mechanism [data-edit-handle]:focus-visible circle { stroke: var(--foreground); stroke-width: 3; }
+.mechanism[data-dragging="true"] { cursor: grabbing; }
+.mechanism g[data-control] { opacity: .45; pointer-events: none; }
+#rubber-sim-values { padding: 4px 8px 10px; color: var(--muted-foreground); font-size: .8rem; }
+.workbench-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 58px; padding: 12px 24px; border-top: 1px solid var(--border); }
+#rubber-sim-focus-hint { max-width: 75ch; }
+#rubber-sim-status { text-align: end; color: var(--muted-foreground); }
+.control-stack { display: grid; gap: 12px; }
+.control-field { display: grid; gap: 6px; }
+.control-heading { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; }
+.control-dot { display: none; }
+.control-value { white-space: nowrap; }
+.form-label { display: block; }
+.form-control { display: block; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--input); border-radius: 6px; background: var(--background); caret-color: var(--purple); font-variant-numeric: tabular-nums; }
+.limit-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.limit-numbers label { font-size: .85rem; }
+.cycle-analysis { right: 24px; bottom: 72px; width: 360px; }
+.cycle-analysis:not([open]) { display: none; }
+.cycle-analysis summary { min-height: 44px; cursor: pointer; font-weight: 600; }
+.cycle-content { display: grid; gap: 12px; padding-top: 12px; }
 .cycle-analysis p, .cycle-ranges { margin: 0; }
-.cycle-track { position: relative; min-height: 24px; background: var(--surface); border: 1px solid var(--border); }
+.cycle-track { position: relative; min-height: 24px; background: var(--background); }
 .cycle-segments { display: grid; gap: 6px; padding-block: 6px; }
 .cycle-lane { position: relative; height: 12px; background: var(--border); }
 .cycle-lane span { position: absolute; height: 100%; min-width: 2px; }
 .cycle-marker { position: absolute; inset-block: -4px; width: 2px; background: var(--foreground); }
 .cycle-axis { display: flex; justify-content: space-between; color: var(--muted-foreground); }
 .cycle-ranges { display: grid; gap: 4px; }
-.cycle-ranges dd + dt { margin-top: 12px; }
-.cycle-ranges dd { margin: 0; overflow-wrap: anywhere; }
+.cycle-ranges dd { margin: 0 0 12px; overflow-wrap: anywhere; }
 [data-phase="contact"] { color: var(--purple); }
 [data-phase="return"] { color: var(--orange); }
-#rubber-sim-status { color: var(--muted-foreground); }
-.btn { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-weight: 500; }
-.btn:hover:enabled { background: #303237; }
-.btn:active:enabled { background: #3a3c43; }
-.btn-primary { border-color: var(--foreground); background: var(--foreground); color: var(--background); }
-.btn-primary:hover:enabled { background: #d8d9dc; }
-.btn-primary:active:enabled { background: #c2c4c8; }
-.simulation-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; align-items: stretch; }
-.simulation-preview { display: grid; align-content: start; gap: 16px; min-width: 0; padding: 24px 32px; }
-.mechanism { display: block; width: 100%; overflow: hidden; }
-.mechanism text { fill: var(--muted-foreground); font-size: var(--font-size-base); font-weight: 400; }
-.mechanism text.primary-label { fill: var(--foreground); }
-.mechanism g[data-control] { opacity: .65; }
-.mechanism [data-crank-handle], .mechanism [data-crank-center-handle] { touch-action: none; cursor: grab; }
-.mechanism[data-dragging="true"], .mechanism[data-dragging="true"] [data-crank-handle], .mechanism[data-dragging="true"] [data-crank-center-handle] { cursor: grabbing; }
-.position-controls { display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 24px; background: var(--surface); border-left: 1px solid var(--border); }
-.component-selector { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.component-selector .btn { padding-inline: 8px; font-size: .9rem; text-align: left; }
-.component-selector .btn[aria-pressed="true"] { border-color: #8e9098; background: #36383e; }
-.control-stack { display: grid; gap: 28px; }
-.control-field { display: grid; gap: 12px; min-width: 0; }
-.control-heading { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto; align-items: start; gap: 8px; }
-.control-value { text-align: end; white-space: nowrap; }
-.control-dot { width: 6px; height: 6px; align-self: center; border-radius: 50%; background: var(--blue); visibility: hidden; }
-[data-guides="true"] .control-field[data-selected="true"] .control-dot { visibility: visible; }
-.form-label { display: block; }
-.form-control { display: block; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 12px; border: 1px solid var(--input); border-radius: 6px; background: var(--background); caret-color: var(--purple); font-variant-numeric: tabular-nums; }
-.form-range { display: block; width: 100%; height: 32px; margin: 0; padding: 0; background: transparent; appearance: none; }
-.form-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--input); }
-.form-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%; background: var(--foreground); appearance: none; }
-.form-range::-moz-range-track { height: 4px; border-radius: 2px; background: var(--input); }
-.form-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--foreground); }
-.dual-range { display: grid; align-items: center; min-height: 32px; }
-.dual-range .range-track { grid-area: 1/1; height: 4px; background: var(--input); }
-.dual-range .range-track div { height: 100%; background: var(--foreground); }
-.dual-range input { grid-area: 1/1; pointer-events: none; position: relative; }
-.dual-range input:focus { z-index: 2; }
-.dual-range input::-webkit-slider-runnable-track { background: transparent; }
-.dual-range input::-moz-range-track { background: transparent; }
-.dual-range input::-webkit-slider-thumb { pointer-events: auto; }
-.dual-range input::-moz-range-thumb { pointer-events: auto; }
-#rubber-sim-focus-hint { padding-top: 20px; border-top: 1px solid var(--border); }
-#rubber-sim-values { color: var(--foreground); }
-.model-notes { margin-top: 8px; color: var(--muted-foreground); }
-.model-notes summary { width: fit-content; min-height: 44px; padding-block: 8px; }
-.model-notes p { margin: 0 0 12px; }
-.model-notes div { max-width: 75ch; margin-top: 8px; }
-@media (min-width: 1600px) { .simulation-layout { grid-template-columns: minmax(0, 1fr) 420px; } .position-controls { padding: 32px; } }
-@media (max-width: 1099px) {
-  .simulation-layout { grid-template-columns: minmax(0, 1fr); }
-  .position-controls { border-left: 0; border-top: 1px solid var(--border); padding: 24px 32px; }
-  .component-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 28px 32px; }
-  #rubber-sim-pivot-controls .control-field:first-child { grid-column: 1/-1; }
-  #rubber-sim-crank-controls > .text-small { align-self: center; }
-}
-/* 平板工作區：機構圖保持可見，控制區自行捲動。 */
-@media (min-width: 600px) and (max-width: 1366px) {
-  #rubber-arm-simulation {
-    display: grid; grid-template-rows: auto minmax(0, 1fr);
-    height: 100vh; height: 100dvh; min-height: 540px;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  }
-  .simulation-toolbar { padding: 14px 20px; }
-  h1 { font-size: 1.25rem; }
-  .workbench-heading { gap: 12px 20px; }
+.model-notes summary { min-height: 44px; padding-block: 8px; }
+.model-notes p { font-size: .85rem; margin: 8px 0; }
+@media (max-width: 900px) {
+  .simulation-toolbar { padding: 10px 16px; gap: 8px; }
+  h1 { font-size: 1rem; }
   .viz-controls { gap: 8px; }
-  .rotation-controls { margin-top: 10px; }
-  .rotation-controls #rubber-sim-status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .btn { min-height: 48px; padding-inline: 14px; }
-  .simulation-layout { grid-template-columns: minmax(0, 1fr) 336px; min-height: 0; }
-  .simulation-preview {
-    grid-template-rows: auto minmax(0, 1fr) 2.75rem;
-    align-content: stretch; gap: 12px; min-height: 0; padding: 16px 20px;
-  }
-  .canvas-viewport { min-width: 0; min-height: 0; }
-  #rubber-sim-values { align-self: center; }
-  .position-controls {
-    gap: 20px; min-height: 0; padding: 20px; border-top: 0; border-left: 1px solid var(--border);
-    overflow-y: auto; overscroll-behavior-y: contain; scroll-padding-block: 20px;
-    scrollbar-color: var(--input) var(--surface);
-  }
-  .component-selector {
-    position: sticky; top: -20px; z-index: 1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: -20px; padding-block: 20px 12px; background: var(--surface);
-  }
-  .control-stack { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .control-field { gap: 8px; }
-  .form-range, .dual-range { min-height: 48px; }
-  .cycle-analysis { margin-top: 0; padding-top: 12px; }
-  .cycle-analysis summary { width: auto; font-size: 1rem; }
-  .model-notes { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--border); }
-}
-@media (min-width: 600px) and (max-width: 999px) {
-  .simulation-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) minmax(260px, 1fr); }
-  .position-controls { border-left: 0; border-top: 1px solid var(--border); }
-  .component-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
-  .control-stack > .text-small, #rubber-sim-crank-controls > .form-label { grid-column: 1/-1; }
+  .mode-switch { font-size: .85rem; }
+  .simulation-preview { padding-inline: 12px; }
+  .workbench-footer { padding: 10px 16px; flex-wrap: wrap; gap: 4px; font-size: .85rem; }
+  #rubber-sim-status { text-align: start; }
 }
 @media (max-width: 599px) {
   :root { font-size: 16px; }
-  .simulation-toolbar, .simulation-preview, .position-controls { padding: 20px 16px; }
-  .workbench-heading { gap: 16px; }
-  .viz-controls { gap: 8px; }
-  #rubber-sim-status { flex-basis: 100%; }
-  .btn { padding-inline: 12px; }
-  .component-selector, .control-stack { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .control-stack { grid-template-columns: minmax(0, 1fr); }
+  .simulation-toolbar { flex-wrap: wrap; }
+  h1 { flex-basis: 100%; }
+  .viz-controls { width: 100%; justify-content: space-between; }
+  .btn, .toolbar-summary { padding-inline: 12px; }
+  .position-controls { position: fixed; top: 132px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 200px); }
+  .tools-content { width: min(300px,90vw); }
+  .cycle-analysis { right: 12px; left: 12px; width: auto; max-height: 48dvh; }
 }
-@media (pointer: coarse) {
-  .form-range, .dual-range { min-height: 48px; }
-  .form-range { touch-action: pan-y; }
-  .form-range::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -12px; }
-  .form-range::-moz-range-thumb { width: 28px; height: 28px; }
-}
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:active:enabled { transform: none; } }
 </style>
 </head>
 <body>
-<main id="rubber-arm-simulation">
+<main id="rubber-arm-simulation" data-editing="false">
   <header class="simulation-toolbar">
-    <div class="workbench-heading">
-      <h1>雪條棍機械人模擬</h1>
-      <div class="viz-controls">
-        <button class="btn" id="rubber-sim-play" type="button">放手</button>
-        <button class="btn" id="rubber-sim-home" type="button">還原配置</button>
-        <button class="btn" id="rubber-sim-store-initial" type="button">設為初始配置</button>
-      </div>
-    </div>
-    <div class="viz-controls rotation-controls">
+    <h1>雪條棍機械人</h1>
+    <div class="viz-controls">
+      <label class="mode-switch"><input id="rubber-sim-edit-structure" type="checkbox"><span>調整結構</span></label>
       <button class="btn btn-primary" id="rubber-sim-drive" type="button">啟動曲柄</button>
-      <button class="btn" id="rubber-sim-analyze" type="button" aria-controls="rubber-sim-cycle-panel" aria-expanded="false">分析一圈</button>
-      <span class="text-small" id="rubber-sim-status" aria-live="polite">待放手 · 慢速 0.25×</span>
-    </div>
-  </header>
-  <div class="simulation-layout">
-    <section class="simulation-preview" aria-label="機構預覽">
-      <div class="viz-row text-small"><span class="text-muted">固定件</span><span>活動棍 1／2</span><span class="text-muted">橡筋</span><span style="color:var(--purple)">曲柄 O–Q</span></div>
-      <div class="canvas-viewport" id="rubber-sim-canvas">
-        <svg class="mechanism" role="img" aria-label="可調位置的雪條棍機構，兩棍固定接合並共同繞樞軸旋轉"></svg>
-      </div>
-      <div class="tabular-nums text-small" id="rubber-sim-values"></div>
-
-    </section>
-    <section class="position-controls" aria-labelledby="rubber-sim-settings-heading">
-    <div class="component-selector" role="group" aria-label="選擇圖中要調整的部件">
-      <button class="btn" id="rubber-sim-select-beam" type="button" aria-pressed="false" aria-controls="rubber-sim-beam-controls">G 綠棍中心</button>
-      <button class="btn" id="rubber-sim-select-hook" type="button" aria-pressed="false" aria-controls="rubber-sim-hook-controls">A 黏合棍</button>
-      <button class="btn" id="rubber-sim-select-pivot" type="button" aria-pressed="true" aria-controls="rubber-sim-pivot-controls">P 樞軸</button>
-      <button class="btn" id="rubber-sim-select-joint" type="button" aria-pressed="false" aria-controls="rubber-sim-joint-controls">J 接合與橡筋</button>
-      <button class="btn" id="rubber-sim-select-whole" type="button" aria-pressed="false" aria-controls="rubber-sim-whole-controls">整體轉動</button>
-      <button class="btn" id="rubber-sim-select-crank" type="button" aria-pressed="false" aria-controls="rubber-sim-crank-controls">O 曲柄</button>
-    </div>
-      <h3 id="rubber-sim-settings-heading">P 樞軸與轉角範圍</h3>
-      <div class="control-stack" id="rubber-sim-beam-controls" hidden></div>
-      <div class="control-stack" id="rubber-sim-hook-controls" hidden></div>
-      <div class="control-stack" id="rubber-sim-pivot-controls">
-        <div class="control-field" id="rubber-sim-limits-field">
-          <div class="control-heading"><span class="control-dot" aria-hidden="true"></span><span>P 可轉動角度</span><output id="rubber-sim-limits-value" class="tabular-nums"></output></div>
-          <div class="dual-range">
-            <div class="range-track" aria-hidden="true"><div id="rubber-sim-range-window"></div></div>
-            <input class="form-range" id="rubber-sim-rotationMin" type="range" min="-50" max="50" step="0.1" value="-50" aria-label="P 最小角度" aria-describedby="rubber-sim-limits-hint">
-            <input class="form-range" id="rubber-sim-rotationMax" type="range" min="-50" max="50" step="0.1" value="50" aria-label="P 最大角度" aria-describedby="rubber-sim-limits-hint">
+      <details class="precision" id="rubber-sim-precision">
+        <summary class="toolbar-summary">數值</summary>
+        <section class="position-controls" aria-labelledby="rubber-sim-settings-heading">
+          <select class="component-selector" id="rubber-sim-component" aria-label="查看部件數值">
+            <option value="crank">O 曲柄</option><option value="whole">白棍姿勢</option><option value="pivot">P 樞軸及角度限制</option>
+            <option value="beam">G 綠棍</option><option value="hook">A 黏合棍</option><option value="joint">J 接合</option>
+          </select>
+          <h3 id="rubber-sim-settings-heading">O 曲柄</h3>
+          <div class="control-stack" id="rubber-sim-beam-controls" hidden></div>
+          <div class="control-stack" id="rubber-sim-hook-controls" hidden></div>
+          <div class="control-stack" id="rubber-sim-pivot-controls" hidden>
+            <div class="control-field" id="rubber-sim-limits-field">
+              <output id="rubber-sim-limits-value" class="tabular-nums"></output>
+              <div class="limit-numbers">
+                <label>下限（°）<input class="form-control" id="rubber-sim-rotationMin" type="number" min="-50" max="50" step="0.1" value="-50" aria-label="P 最小角度"></label>
+                <label>上限（°）<input class="form-control" id="rubber-sim-rotationMax" type="number" min="-50" max="50" step="0.1" value="50" aria-label="P 最大角度"></label>
+              </div>
+              <div id="rubber-sim-limits-hint" class="text-small text-muted">點 P，再拖圖上的「下限／上限」把手。</div>
+            </div>
           </div>
-          <div id="rubber-sim-limits-hint" class="text-small text-muted">白棍集中在 −50° 至 50° 內轉動；拖動滑塊會顯示相應姿勢，兩個滑塊之間為可轉範圍。</div>
-        </div>
-      </div>
-      <div class="control-stack" id="rubber-sim-joint-controls" hidden></div>
-      <div class="control-stack" id="rubber-sim-crank-controls" hidden>
-        <label class="form-label" for="rubber-sim-crankAngle">順時針累計轉角（°）<input class="form-control" id="rubber-sim-crankAngle" type="number" min="0" step="1" value="0" aria-describedby="rubber-sim-crank-hint"></label>
-        <div id="rubber-sim-crank-hint" class="text-small text-muted">拖 O 或調位置 slider，Q 碰到白棍會推動佢繞 P 轉；受阻時 O 停下。按住 Q 可順時針連續轉動，快慢由你控制。</div>
-        <div class="text-small text-muted">O–Q 固定 21 mm；Q 直徑 3 mm；O 距底板上邊至少 21 mm。</div>
-      </div>
-      <div class="control-stack" id="rubber-sim-whole-controls" hidden>
-        <div class="control-field" id="rubber-sim-angle-field">
-          <div class="control-heading">
-            <span class="control-dot" aria-hidden="true"></span>
-            <label class="form-label" for="rubber-sim-angle">繞 P 的起始／目前角度</label>
-            <span class="control-value"><output id="rubber-sim-angle-value" class="tabular-nums">0.0°</output></span>
+          <div class="control-stack" id="rubber-sim-joint-controls" hidden></div>
+          <div class="control-stack" id="rubber-sim-crank-controls">
+            <label class="form-label" for="rubber-sim-crankAngle">順時針累計轉角（°）<input class="form-control" id="rubber-sim-crankAngle" type="number" min="0" step="1" value="0"></label>
+            <div class="text-small text-muted">O–Q 21 mm · Q 直徑 3 mm · O 至底板至少 21 mm</div>
           </div>
-          <input class="form-range" id="rubber-sim-angle" type="range" min="-50" max="50" step="0.1" value="0" aria-describedby="rubber-sim-focus-hint">
-        </div>
-      </div>
-      <div id="rubber-sim-focus-hint" class="text-small text-muted" aria-live="polite"></div>
-      <details class="cycle-analysis" id="rubber-sim-cycle-panel">
-        <summary id="rubber-sim-cycle-heading">白棍繞 P 的角度與掃過範圍</summary>
-        <div class="cycle-content">
-        <p class="text-small text-muted" id="rubber-sim-cycle-note" aria-live="polite">按「分析一圈」計算目前配置。</p>
-        <div class="cycle-track" id="rubber-sim-cycle-track" role="img" aria-label="白棍繞 P 的角度範圍，尚未分析">
-          <div class="cycle-segments" id="rubber-sim-cycle-segments"></div>
-          <div class="cycle-marker" id="rubber-sim-cycle-marker" hidden></div>
-        </div>
-        <div class="cycle-axis text-small tabular-nums" aria-hidden="true"><span>−50°</span><span>−25°</span><span>0°</span><span>25°</span><span>50°</span></div>
-        <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
+          <div class="control-stack" id="rubber-sim-whole-controls" hidden>
+            <div class="control-field" id="rubber-sim-angle-field">
+              <div class="control-heading"><label for="rubber-sim-angle">白棍角度（°）</label><output id="rubber-sim-angle-value" class="tabular-nums">0.0°</output></div>
+              <input class="form-control" id="rubber-sim-angle" type="number" min="-50" max="50" step="0.1" value="0">
+            </div>
+          </div>
+        </section>
+      </details>
+      <details class="tools" id="rubber-sim-tools">
+        <summary class="toolbar-summary">更多</summary>
+        <div class="tools-content">
+          <button class="btn" id="rubber-sim-analyze" type="button" aria-controls="rubber-sim-cycle-panel" aria-expanded="false">分析一圈及掃過範圍</button>
+          <button class="btn" id="rubber-sim-play" type="button">放手，讓橡筋拉回</button>
+          <button class="btn" id="rubber-sim-fit" type="button">重新置中模型</button>
+          <button class="btn" id="rubber-sim-home" type="button">還原配置</button>
+          <button class="btn" id="rubber-sim-store-initial" type="button">設為本機初始配置</button>
+                <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。直徑 3 mm 的圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
         </div>
       </details>
-      <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。直徑 3 mm 的圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
-    </section>
-  </div>
+    </div>
+  </header>
+  <section class="simulation-preview" aria-label="機構預覽">
+    <div class="canvas-viewport" id="rubber-sim-canvas">
+      <svg class="mechanism" role="group" aria-label="可調位置的雪條棍機構，兩棍固定接合並共同繞樞軸旋轉" aria-describedby="rubber-sim-focus-hint"></svg>
+    </div>
+    <div class="tabular-nums" id="rubber-sim-values"></div>
+  </section>
+  <footer class="workbench-footer">
+    <div id="rubber-sim-focus-hint" class="text-small" aria-live="polite">拖 O 移位置 · 拖 Q 順時針轉 · 拖白棍擺角 · 點 P 改範圍</div>
+    <span class="text-small" id="rubber-sim-status" aria-live="polite">待試動</span>
+  </footer>
+  <details class="cycle-analysis" id="rubber-sim-cycle-panel">
+    <summary id="rubber-sim-cycle-heading">白棍角度與掃過範圍（收起）</summary>
+    <div class="cycle-content">
+      <p class="text-small text-muted" id="rubber-sim-cycle-note" aria-live="polite"></p>
+      <div class="cycle-track" id="rubber-sim-cycle-track" role="img" aria-label="白棍繞 P 的角度範圍，尚未分析">
+        <div class="cycle-segments" id="rubber-sim-cycle-segments"></div><div class="cycle-marker" id="rubber-sim-cycle-marker" hidden></div>
+      </div>
+      <div class="cycle-axis text-small tabular-nums" aria-hidden="true"><span>−50°</span><span>−25°</span><span>0°</span><span>25°</span><span>50°</span></div>
+      <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
+    </div>
+  </details>
 </main>
 <script>
 (() => {
@@ -548,7 +492,10 @@ h3 { font-size: 1.15rem; }
   // END PHYSICS
   const root=document.getElementById('rubber-arm-simulation'),svg=root.querySelector('.mechanism'),canvas=root.querySelector('#rubber-sim-canvas');
   const tabletLayout=window.matchMedia('(min-width: 600px) and (max-width: 1366px)');
-  // 固定畫布座標；載入時預留兩個 P slider 的移動及整組旋轉範圍，之後不再自動置中或縮放。
+  const structureToggle=root.querySelector('#rubber-sim-edit-structure'),componentInput=root.querySelector('#rubber-sim-component');
+  const tools=root.querySelector('#rubber-sim-tools'),precision=root.querySelector('#rubber-sim-precision');
+  let editingStructure=false;
+  // 以目前機構建立固定視野；改 P 或曲柄不會縮放，只有使用者要求置中時重設。
   let canvasBounds=null,canvasMap=null,crankScreenCenter=[0,0];
   const input=root.querySelector('#rubber-sim-angle'),output=root.querySelector('#rubber-sim-angle-value');
   const play=root.querySelector('#rubber-sim-play'),drive=root.querySelector('#rubber-sim-drive'),home=root.querySelector('#rubber-sim-home'),status=root.querySelector('#rubber-sim-status');
@@ -566,11 +513,11 @@ h3 { font-size: 1.15rem; }
     join2:'棍 2 沿自身方向移位；B 按兩棍的上方外沿交點重新計算。',
     angle2:'棍 2 繞 J 改變夾角，凹位 B 隨外沿改變；放手後保持這個夾角。',
     angle:'整體角度：兩支活動棍一起繞 P 轉動，兩棍相對位置保持固定。',
-    crankX:'O 左右位置：移動曲柄圓心；Q 接觸白棍會推動兩棍，綠色件及 P 不動。',
+    crankX:'拖 O 移動曲柄圓心；Q 接觸白棍會推動兩棍。',
     crankY:'O 上下位置：Q 接觸白棍會推動兩棍；O 距底板上邊至少 21 mm，O–Q 固定 21 mm。',
     crankAngle:'按住 Q 順時針繞 O 連續拖動，快慢由你控制；拖 O 可調圓心位置。',
-    rotationMin:'下限預覽：拖動左滑塊，兩支白棍即時一起轉到下限姿勢。',
-    rotationMax:'上限預覽：拖動右滑塊，兩支白棍即時一起轉到上限姿勢。'
+    rotationMin:'下限預覽：拖動下限把手，兩支白棍即時一起轉到下限姿勢。',
+    rotationMax:'上限預覽：拖動上限把手，兩支白棍即時一起轉到上限姿勢。'
   };
   let activeControl='rotationMin';
   let guideVisible=false,guideTimer=0;
@@ -679,51 +626,56 @@ h3 { font-size: 1.15rem; }
       if(['pinRadius','crankRPM','crankAngle','crankLength'].includes(key))continue;
       const cell=document.createElement('div'),id=`rubber-sim-${key}`;
       cell.className='control-field';
-      cell.innerHTML=`<div class="control-heading"><span class="control-dot" aria-hidden="true"></span><label class="form-label" for="${id}">${label}</label><span class="control-value"><output class="tabular-nums"></output></span></div><input class="form-range" id="${id}" type="range" min="${min}" max="${max}" step="${step}" aria-describedby="rubber-sim-focus-hint">`;
+      cell.innerHTML=`<div class="control-heading"><span class="control-dot" aria-hidden="true"></span><label class="form-label" for="${id}">${label}</label><span class="control-value"><output class="tabular-nums"></output></span></div><input class="form-control" id="${id}" type="number" min="${min}" max="${max}" step="${step}" aria-describedby="rubber-sim-focus-hint">`;
       const slider=cell.querySelector('input'),value=cell.querySelector('output');
       fieldInputs.set(key,{slider,value,cell});container.appendChild(cell);
       for(const event of ['focus','pointerenter'])slider.addEventListener(event,()=>chooseControl(key,true));
       slider.addEventListener('input',()=>{
+        if(String(slider.value).trim()===''||!Number.isFinite(Number(slider.value)))return;
         halt('待放手');state[1]=0;elapsed=0;
         if(key==='crankX'||key==='crankY')moveCrankCenter(model.crankCenter.map((v,i)=>i===(key==='crankX'?0:1)?Number(slider.value):v));
         else {design[key]=Number(slider.value);rebuild();}
         syncControls();chooseControl(key,true);
       });
-      slider.addEventListener('change',save);
+      slider.addEventListener('change',()=>{syncControls();save();});
     }
   }
   for(const [key] of limitFields){
     const slider=root.querySelector(`#rubber-sim-${key}`);
     for(const event of ['focus','pointerenter'])slider.addEventListener(event,()=>chooseControl(key,true));
     slider.addEventListener('input',()=>{
+      if(String(slider.value).trim()===''||!Number.isFinite(Number(slider.value)))return;
       halt('待放手');const value=Number(slider.value);
       design[key]=key==='rotationMin'?Math.min(value,design.rotationMax):Math.max(value,design.rotationMin);
       rebuild();state=limitRotation([design[key]/180*Math.PI,0],model);elapsed=0;syncControls();
       status.textContent=`P ${key==='rotationMin'?'下限':'上限'}預覽 · ${design[key].toFixed(1)}°`;
       chooseControl(key,true);
     });
-    slider.addEventListener('change',save);
+    slider.addEventListener('change',()=>{syncControls();save();});
   }
   function chooseControl(key,preview=false){
     activeControl=key;
     clearTimeout(guideTimer);guideVisible=preview&&!running;
     root.setAttribute('data-guides',String(guideVisible));
     if(guideVisible)guideTimer=setTimeout(()=>{guideVisible=false;root.setAttribute('data-guides','false');draw();},800);
-    const group=groupFor[key];
+    const group=groupFor[key];componentInput.value=group;
     for(const name of Object.keys(groupLabels)){
-      root.querySelector(`#rubber-sim-select-${name}`).setAttribute('aria-pressed',String(name===group));
       root.querySelector(`#rubber-sim-${name}-controls`).hidden=name!==group;
     }
     for(const [name,{cell}] of fieldInputs)cell.setAttribute('data-selected',String(name===key));
     root.querySelector('#rubber-sim-angle-field').setAttribute('data-selected',String(key==='angle'));
     root.querySelector('#rubber-sim-limits-field').setAttribute('data-selected',String(key==='rotationMin'||key==='rotationMax'));
     root.querySelector('#rubber-sim-settings-heading').textContent=groupLabels[group];
-    root.querySelector('#rubber-sim-focus-hint').textContent=controlHints[key];
+    root.querySelector('#rubber-sim-focus-hint').textContent=editingStructure?'拖綠棍移位 · 拖 P／J 沿棍滑動 · 點白棍 2 顯示轉角把手':group==='pivot'?'拖圖上的下限／上限把手；白棍會預覽相應位置':'拖 O 移位置 · 拖 Q 順時針轉 · 拖白棍擺角 · 點 P 改範圍';
     draw();
   }
-  for(const [group,key] of Object.entries(groupFirst)){
-    root.querySelector(`#rubber-sim-select-${group}`).addEventListener('click',()=>{chooseControl(key);save();});
-  }
+  componentInput.addEventListener('change',()=>{chooseControl(groupFirst[componentInput.value]);save();});
+  structureToggle.addEventListener('change',()=>{
+    halt('待調整');editingStructure=structureToggle.checked;root.setAttribute('data-editing',String(editingStructure));
+    chooseControl(editingStructure?'beamX':'crankX');
+  });
+  root.querySelector('#rubber-sim-fit').addEventListener('click',()=>{canvasBounds=null;tools.open=false;draw();});
+  root.addEventListener('keydown',event=>{if(event.key==='Escape'){tools.open=precision.open=cyclePanel.open=false;}});
   function syncControls(){
     for(const [key,label,min,max,step,value,unit] of fields){
       const entry=fieldInputs.get(key);if(!entry)continue;
@@ -733,23 +685,15 @@ h3 { font-size: 1.15rem; }
     }
     for(const [key,label,min,max] of limitFields){const slider=root.querySelector(`#rubber-sim-${key}`);slider.min=min;slider.max=max;slider.value=design[key];}
     root.querySelector('#rubber-sim-limits-value').value=`${design.rotationMin.toFixed(1)}° 至 ${design.rotationMax.toFixed(1)}°`;
-    const band=root.querySelector('#rubber-sim-range-window');
-    band.style.marginInlineStart=`${design.rotationMin+50}%`;band.style.width=`${design.rotationMax-design.rotationMin}%`;
     input.min=design.rotationMin;input.max=design.rotationMax;
   }
   function draw(){
-    if(!canvasBounds){
-      const scenes=controls.pivot[0].slice(2,4).flatMap(pivotT=>
-        controls.pivot[1].slice(2,4).map(beamT=>buildGeometry({...design,pivotT,beamT})));
-      canvasBounds=[0,1].map(axis=>[
-        Math.min(...scenes.map(g=>g.bounds[axis][0])),Math.max(...scenes.map(g=>g.bounds[axis][1]))
-      ]);
-    }
+    if(!canvasBounds)canvasBounds=model.bounds.map(pair=>[...pair]);
     const {P,arms,beam,base,support,hook}=model,bounds=canvasBounds;
     const width=Math.max(280,svg.getBoundingClientRect().width),spanX=bounds[0][1]-bounds[0][0],spanY=bounds[1][1]-bounds[1][0];
     // 只在視窗尺寸改變時調整畫面比例；P、曲柄及接合位置不會觸發自動縮放。
-    const availableHeight=tabletLayout.matches?Math.max(96,canvas.getBoundingClientRect().height):Math.max(560,window.innerHeight-160);
-    const scale=Math.min((width-64)/spanX,(availableHeight-48)/spanY),height=tabletLayout.matches?availableHeight:spanY*scale+48;
+    const availableHeight=Math.max(160,canvas.getBoundingClientRect().height||window.innerHeight-140);
+    const scale=Math.min((width-64)/spanX,(availableHeight-48)/spanY),height=availableHeight;
     const top=(height-spanY*scale)/2;
     const point=q=>[(width-spanX*scale)/2+(q[0]-bounds[0][0])*scale,top+(bounds[1][1]-q[1])*scale];
     canvasMap={scale,left:(width-spanX*scale)/2,top,minX:bounds[0][0],maxY:bounds[1][1]};
@@ -786,6 +730,28 @@ h3 { font-size: 1.15rem; }
       case 'crankAngle':
         target=model.crankCenter;tag='';selected=[[model.crankCenter,pin]];turn=direction(selected[0]);break;
     }
+    const handle=(key,q,name,color='var(--foreground)',caption='')=>{
+      const v=point(q);
+      return `<g data-edit-handle="${key}" role="button" tabindex="0" aria-label="${name}"><circle cx="${v[0]}" cy="${v[1]}" r="22" fill="transparent"/><circle cx="${v[0]}" cy="${v[1]}" r="8" fill="var(--background)" stroke="${color}" stroke-width="2"/><path d="M${v[0]-3},${v[1]-2}h6 M${v[0]-3},${v[1]+2}h6" stroke="${color}" stroke-width="1.5"/>${caption?label(q,caption,12,-12,true):''}</g>`;
+    };
+    const rodHit=(arm,key,name)=>{const a=point(arm[0]),b=point(arm[1]);return `<path data-edit-handle="${key}" role="button" tabindex="0" aria-label="${name}" d="M${a.join(',')}L${b.join(',')}" stroke="transparent" stroke-width="${Math.max(44,stickWidth*scale)}" stroke-linecap="round" fill="none"/>`;};
+    let editHandles=moving.map((arm,i)=>rodHit(arm,`white${i+1}`,editingStructure?`白棍 ${i+1}：沿棍拖動，調接合位置`:'白棍：拖動繞 P 擺角，方向鍵調整')).join('');
+    if(editingStructure){
+      editHandles+=rodHit(beam,'beamMove','G 綠棍：拖動移位')+handle('beamMove',[design.beamX,design.beamY],'G：拖動移位','var(--green)','G')+handle('beamT',P,'P：沿綠棍拖動','var(--red)')+handle('join1',joint,'J：沿白棍 1 拖動');
+      const hookTip=hook.reduce((best,q)=>Math.hypot(...q.map((v,i)=>v-model.glue[i]))>Math.hypot(...best.map((v,i)=>v-model.glue[i]))?q:best,hook[0]);
+      editHandles+=handle('hookAngle',hookTip,'A 棍：拖動轉角','var(--green)','轉 A');
+      if(groupFor[activeControl]==='beam')editHandles+=handle('beamAngle',beam[1],'綠棍：拖動末端轉角','var(--green)','轉角');
+      if(groupFor[activeControl]==='joint')editHandles+=handle('angle2',moving[1][1],'白棍 2：繞 J 轉角','var(--foreground)','轉角');
+    }else{
+      editHandles+=handle('limits',P,'P：點一下調整白棍的上下限','var(--red)');
+      if(groupFor[activeControl]==='pivot'){
+        const axis=Math.atan2(arms[0][1][1]-arms[0][0][1],arms[0][1][0]-arms[0][0][0]);
+        for(const [key,r,name] of [['rotationMin',76,'下限'],['rotationMax',124,'上限']]){
+          const angle=axis+design[key]*Math.PI/180,q=P.map((v,i)=>v+r/scale*(i?Math.sin(angle):Math.cos(angle)));
+          editHandles+=path([P,q],'var(--border)',1,'3 5')+handle(key,q,`${name}：繞 P 拖動，預覽白棍位置`,'var(--purple)',`${name} ${design[key].toFixed(1)}°`);
+        }
+      }
+    }
     const v=point(target),marker='url(#rubber-sim-edit-arrow)';
     let guide=selected.map(arm=>path(arm,'var(--blue)',2,'4 4')).join('')+`<circle cx="${v[0]}" cy="${v[1]}" r="10" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
     if(axis){
@@ -802,7 +768,7 @@ h3 { font-size: 1.15rem; }
     svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.height=`${height}px`;
     svg.innerHTML=`<title>${controlHints[activeControl]} 角度 ${wrapped(state[0]).toFixed(1)} 度；橡筋長 ${(f.L*1000).toFixed(2)} 毫米</title><defs><marker id="rubber-sim-edit-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2" orient="auto-start-reverse"><path d="M0,0 L4,2 L0,4" fill="var(--blue)"/></marker></defs>`+
       `<g data-context="fixed" opacity="0.5">${path(base,'var(--green)',2)+path(hook,'var(--green)',2)}<g opacity="0.4">${path(support,'var(--green)',1.5,'6 5')}</g>${stick(beam,'var(--green)')}</g>`+
-      (whiteSweepMarkup?`<g data-white-sweeps transform="matrix(${scale} 0 0 ${-scale} ${point([0,0]).join(' ')})" pointer-events="none">${whiteSweepMarkup}</g>`:'')+
+      (whiteSweepMarkup&&cyclePanel.open?`<g data-white-sweeps transform="matrix(${scale} 0 0 ${-scale} ${point([0,0]).join(' ')})" pointer-events="none">${whiteSweepMarkup}</g>`:'')+
       (f.valid?`<g data-context="rubber" opacity="0.55">${path(f.path,'var(--orange)',2,f.tension>0?'':'5 4')}</g>`:'')+
       moving.map(a=>stick(a,'var(--foreground)')).join('')+
       (guideVisible&&groupFor[activeControl]==='crank'?`<circle data-crank-orbit cx="${o[0]}" cy="${o[1]}" r="${design.crankLength*scale}" fill="none" stroke="var(--border)" stroke-width="1"/>`:'')+
@@ -813,8 +779,9 @@ h3 { font-size: 1.15rem; }
       `<path d="M${p[0]-5},${p[1]}h10 M${p[0]},${p[1]-5}v10" stroke="var(--red)" stroke-width="2" opacity="0.8"/>`+
       label(P,'P',-20,-10)+label(P,`${(state[0]*180/Math.PI).toFixed(1)}°`,12,25,true)+label(f.a,'A',0,-14)+label(joint,'J',-16,16)+(model.binding?label(f.b,'B',10,-10):'')+label(pin,'Q',10,-10,true)+
       moving.map((arm,i)=>label(along(arm,0.15),String(i+1),-16,8,true)).join('')+
-      `<circle data-crank-handle class="cursor-interaction" cx="${tip[0]}" cy="${tip[1]}" r="22" fill="transparent"/>`+
-      `<g data-crank-center-handle>${label(model.crankCenter,'O',-18,16,true)}<circle cx="${o[0]}" cy="${o[1]}" r="22" fill="transparent"/></g>`+
+      editHandles+
+      `<g data-crank-handle data-edit-handle="pin" role="button" tabindex="0" aria-label="Q：順時針拖動，方向鍵向右轉動"><circle cx="${tip[0]}" cy="${tip[1]}" r="22" fill="transparent"/><circle cx="${tip[0]}" cy="${tip[1]}" r="15" fill="none" stroke="var(--purple)" stroke-width="1" opacity="0.45"/></g>`+
+      `<g data-crank-center-handle data-edit-handle="center" role="button" tabindex="0" aria-label="O：拖動移位置，方向鍵移動">${label(model.crankCenter,'O',-18,24,true)}<circle cx="${o[0]}" cy="${o[1]}" r="22" fill="transparent"/><circle cx="${o[0]}" cy="${o[1]}" r="9" fill="var(--background)" stroke="var(--purple)" stroke-width="2"/></g>`+
       (guideVisible?`<g data-control="${activeControl}">${guide}</g>`:'');
     const limitPreview=!running&&['rotationMin','rotationMax'].includes(activeControl);
     const shownAngle=rotationBounds(model)[0]===-Infinity&&!limitPreview?wrapped(state[0]):state[0]/Math.PI*180;
@@ -849,6 +816,7 @@ h3 { font-size: 1.15rem; }
     draw();if(running)frameId=requestAnimationFrame(frame);
   }
   function startMotor(useCrank){
+    tools.open=precision.open=false;editingStructure=false;structureToggle.checked=false;root.setAttribute('data-editing','false');
     if(running&&driven===useCrank){halt('已暫停');(useCrank?drive:play).textContent='繼續';save();return;}
     halt('待放手');
     const contact=resolvePin(state,crankPhase,useCrank?-design.crankRPM*Math.PI/30:0,model);
@@ -860,10 +828,10 @@ h3 { font-size: 1.15rem; }
   }
   play.addEventListener('click',()=>startMotor(false));
   drive.addEventListener('click',()=>startMotor(true));
-  cyclePanel.addEventListener('toggle',()=>analyzeButton.setAttribute('aria-expanded',String(cyclePanel.open)));
+  cyclePanel.addEventListener('toggle',()=>{analyzeButton.setAttribute('aria-expanded',String(cyclePanel.open));draw();});
   analyzeButton.addEventListener('click',()=>{
-    halt('分析一圈');status.textContent=runCycleAnalysis();draw();
-    cyclePanel.open=true;analyzeButton.setAttribute('aria-expanded','true');
+    tools.open=false;precision.open=false;halt('分析一圈');status.textContent=runCycleAnalysis();
+    cyclePanel.open=true;draw();analyzeButton.setAttribute('aria-expanded','true');
     cycleHeading.focus({preventScroll:true});cyclePanel.scrollIntoView({block:'nearest'});
   });
   function startManual(target=crankPhase){
@@ -882,29 +850,84 @@ h3 { font-size: 1.15rem; }
     const rect=svg.getBoundingClientRect();
     return [canvasMap.minX+(event.clientX-rect.left-canvasMap.left)/canvasMap.scale,canvasMap.maxY-(event.clientY-rect.top-canvasMap.top)/canvasMap.scale];
   }
+  const bearingAt=(point,center)=>Math.atan2(point[1]-center[1],point[0]-center[0]);
+  const projectDelta=(delta,arm)=>{const v=arm[1].map((n,i)=>n-arm[0][i]);return (delta[0]*v[0]+delta[1]*v[1])/(v[0]*v[0]+v[1]*v[1])*100;};
+  function setWhiteAngle(degrees,avoidPin=false){
+    const target=limitRotation([degrees*Math.PI/180,0],model)[0],start=state[0];
+    if(avoidPin){
+      const count=Math.max(1,Math.ceil(Math.abs(target-start)*180/Math.PI));
+      for(let i=1;i<=count;i++){
+        const angle=start+(target-start)*i/count;
+        if(pinContacts(angle,crankPhase,model).some(c=>c.gap<-.001)){status.textContent='Q 擋住白棍；先轉 Q 或移 O';break;}
+        state=[angle,0];
+      }
+    }else state=[target,0];
+    elapsed=0;invalidateCycle();syncControls();
+  }
+  function previewLimit(key,degrees){
+    const value=Math.max(-50,Math.min(50,degrees));
+    design[key]=key==='rotationMin'?Math.min(value,design.rotationMax):Math.max(value,design.rotationMin);
+    rebuild();setWhiteAngle(design[key]);status.textContent=`${key==='rotationMin'?'下限':'上限'}預覽 · ${design[key].toFixed(1)}°`;
+  }
+  function adjustStructure(values){Object.assign(design,values);rebuild();state=limitRotation(state,model);syncControls();}
   svg.addEventListener('pointerdown',event=>{
     if(dragInfo||event.button!==0)return;
-    const center=event.target.closest('[data-crank-center-handle]');
-    if(!center&&!event.target.closest('[data-crank-handle]'))return;
+    const center=event.target.closest('[data-crank-center-handle]'),pin=event.target.closest('[data-crank-handle]'),handle=event.target.closest('[data-edit-handle]');
+    if(!center&&!pin&&!handle)return;
+    tools.open=precision.open=false;
+    const point=pointerWorld(event);
     if(center){
-      const point=pointerWorld(event);halt('移動 O');state[1]=0;chooseControl('crankX');
+      halt('移動 O');state[1]=0;chooseControl('crankX');
       dragInfo={id:event.pointerId,type:'center',offset:point.map((v,i)=>v-model.crankCenter[i])};
-    }else{
+    }else if(pin){
       const bearing=pointerBearing(event);if(bearing===null)return;
       halt('待手動');startManual();dragInfo={id:event.pointerId,type:'pin',bearing};
+    }else{
+      const key=handle.getAttribute('data-edit-handle');
+      halt('直接調整');state[1]=0;
+      if(key==='limits'){chooseControl('rotationMin');return;}
+      const control=key==='white1'?(editingStructure?'pivotT':'angle'):key==='white2'?(editingStructure?'join2':'angle'):key==='beamMove'?'beamX':key;
+      chooseControl(control);
+      const around=key==='beamAngle'?[design.beamX,design.beamY]:key==='hookAngle'?model.glue:key==='angle2'?rotate(model.joint,state[0],model.P):model.P;
+      dragInfo={id:event.pointerId,type:'edit',key,origin:point,design:{...design},arms:model.arms.map(a=>a.map(q=>rotate(q,state[0],model.P))),beam:model.beam,around,bearing:bearingAt(point,around),angle:key==='white1'||key==='white2'?state[0]*180/Math.PI:design[key]};
     }
-    event.preventDefault();
-    svg.setPointerCapture(event.pointerId);svg.setAttribute('data-dragging','true');
+    event.preventDefault();svg.setPointerCapture(event.pointerId);svg.setAttribute('data-dragging','true');
   });
   svg.addEventListener('pointermove',event=>{
     if(!dragInfo||event.pointerId!==dragInfo.id)return;
     if(dragInfo.type==='center'){
-      const point=pointerWorld(event).map((v,i)=>v-dragInfo.offset[i]);
-      moveCrankCenter(point);syncControls();draw();
-      event.preventDefault();return;
+      moveCrankCenter(pointerWorld(event).map((v,i)=>v-dragInfo.offset[i]));syncControls();draw();event.preventDefault();return;
     }
-    const bearing=pointerBearing(event);if(bearing===null)return;
-    manualTarget+=Math.min(0,angleDelta(bearing,dragInfo.bearing));dragInfo.bearing=bearing;event.preventDefault();
+    if(dragInfo.type==='pin'){
+      const bearing=pointerBearing(event);if(bearing===null)return;
+      manualTarget+=Math.min(0,angleDelta(bearing,dragInfo.bearing));dragInfo.bearing=bearing;event.preventDefault();return;
+    }
+    const d=dragInfo,point=pointerWorld(event),delta=point.map((v,i)=>v-d.origin[i]),bearing=bearingAt(point,d.around);
+    if(d.key==='rotationMin'||d.key==='rotationMax'){
+      previewLimit(d.key,Math.round(angleDelta(bearing,firstAngle)*180/Math.PI*10)/10);
+    }else if(!editingStructure&&(d.key==='white1'||d.key==='white2')){
+      d.angle+=angleDelta(bearing,d.bearing)*180/Math.PI;setWhiteAngle(d.angle,true);d.angle=state[0]*180/Math.PI;
+    }else if(d.key==='beamMove')adjustStructure({beamX:d.design.beamX+delta[0],beamY:d.design.beamY+delta[1]});
+    else if(d.key==='beamT')adjustStructure({beamT:d.design.beamT+projectDelta(delta,d.beam)});
+    else if(d.key==='join1')adjustStructure({join1:d.design.join1+projectDelta(delta,d.arms[0])});
+    else if(d.key==='white1')adjustStructure({pivotT:d.design.pivotT-projectDelta(delta,d.arms[0])});
+    else if(d.key==='white2')adjustStructure({join2:d.design.join2-projectDelta(delta,d.arms[1])});
+    else {d.angle+=angleDelta(bearing,d.bearing)*180/Math.PI;adjustStructure({[d.key]:d.angle});}
+    d.bearing=bearing;draw();event.preventDefault();
+  });
+  svg.addEventListener('keydown',event=>{
+    const handle=event.target.closest('[data-edit-handle]');if(!handle)return;
+    const key=handle.getAttribute('data-edit-handle'),sign=['ArrowRight','ArrowUp'].includes(event.key)?1:['ArrowLeft','ArrowDown'].includes(event.key)?-1:0,amount=event.shiftKey?5:1;
+    if(key==='limits'&&['Enter',' '].includes(event.key)){event.preventDefault();chooseControl('rotationMin');return;}
+    if(!sign)return;event.preventDefault();
+    if(key==='pin'){if(sign>0)startManual((manualTarget??crankPhase)-amount*Math.PI/180);return;}
+    halt('鍵盤調整');
+    if(key==='center')moveCrankCenter(model.crankCenter.map((v,i)=>v+(i===(event.key==='ArrowLeft'||event.key==='ArrowRight'?0:1)?sign*amount:0)));
+    else if(key==='rotationMin'||key==='rotationMax')previewLimit(key,design[key]+sign*amount);
+    else if(!editingStructure&&(key==='white1'||key==='white2'))setWhiteAngle(state[0]*180/Math.PI+sign*amount,true);
+    else if(key==='beamMove')adjustStructure({[event.key==='ArrowLeft'||event.key==='ArrowRight'?'beamX':'beamY']:design[event.key==='ArrowLeft'||event.key==='ArrowRight'?'beamX':'beamY']+sign*amount});
+    else {const field=key==='white1'?'pivotT':key==='white2'?'join2':key;adjustStructure({[field]:design[field]+sign*amount});}
+    syncControls();draw();save();svg.querySelector(`[data-edit-handle="${key}"]`)?.focus();
   });
   function finishDrag(event){
     if(!dragInfo||event.pointerId!==dragInfo.id)return;
@@ -928,7 +951,7 @@ h3 { font-size: 1.15rem; }
     crankInput.value=(design.crankAngle-target/Math.PI*180).toFixed(2);startManual(target);
   });
   for(const event of ['focus','pointerenter'])input.addEventListener(event,()=>chooseControl('angle',true));
-  input.addEventListener('input',()=>{halt('待放手');state=limitRotation([Number(input.value)*Math.PI/180,0],model);elapsed=0;invalidateCycle();chooseControl('angle',true);});
+  input.addEventListener('input',()=>{if(String(input.value).trim()===''||!Number.isFinite(Number(input.value)))return;halt('待放手');state=limitRotation([Number(input.value)*Math.PI/180,0],model);elapsed=0;invalidateCycle();chooseControl('angle',true);});
   input.addEventListener('change',save);
   home.addEventListener('click',()=>{halt('待放手');restore(loadInitial());chooseControl('rotationMin');save();});
   root.querySelector('#rubber-sim-store-initial').addEventListener('click',()=>{
@@ -944,7 +967,7 @@ h3 { font-size: 1.15rem; }
     const encoded=JSON.stringify(incoming?.modelContent);
     if([10,11,12,13].includes(incoming?.modelContent?.version)&&encoded!==lastSaved&&encoded!==JSON.stringify(snapshot())){halt('待放手');restore(incoming);chooseControl(activeControl);}
   });
-  restore(loadInitial()||loadSaved());chooseControl('rotationMin');
+  restore(loadInitial()||loadSaved());chooseControl('crankX');
   runCycleAnalysis();
   draw();
   // 平板由獨立畫布格決定高度；下一畫格才重繪，避免觀察 SVG 自己寫入的高度。

@@ -2,6 +2,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const file=require('node:path').join(__dirname,'index.html');
 const html=fs.readFileSync(file,'utf8');
+assert.ok(!/type="range"/.test(html),'介面不再使用 slider');
+assert.ok(!html.includes('rubber-sim-select-'),'移除六個部件選擇按鈕');
 assert.ok(html.startsWith('<!doctype html>')&&html.includes('<html lang="zh-Hant">'),'交付必須是完整的繁體中文網頁');
 assert.ok(!/<iframe\b|data-srcdoc=|window\.openai|<script[^>]+src=/i.test(html),'網頁須直接執行，不依賴內嵌 demo、ChatGPT 或外部程式');
 const code=html.split('// BEGIN PHYSICS')[1].split('// END PHYSICS')[0];
@@ -346,8 +348,7 @@ assert.ok(elements.get('rubber-sim-cycle-segments').content.includes('data-phase
 assert.ok(elements.get('rubber-sim-cycle-note').textContent.includes('30.0 rpm'));
 assert.ok(elements.get('rubber-sim-cycle-ranges').content.includes('360.0°'));
 assert.ok(elements.get('rubber-sim-cycle-ranges').content.includes('白棍')&&elements.get('rubber-sim-cycle-ranges').content.includes('起點'));
-assert.ok(elements.get('.mechanism').content.includes('data-white-swept-area="contact"')&&elements.get('.mechanism').content.includes('data-white-swept-area="return"'));
-assert.ok(elements.get('.mechanism').content.includes('data-white-angle-range='));
+assert.ok(!elements.get('.mechanism').content.includes('data-white-swept-area='),'未開分析時不要讓陰影遮住模型');
 assert.equal(elements.get('rubber-sim-cycle-marker').style.left,'50%','初始白棍 0° 在 −50° 至 50° 中間');
 
 // 模擬首次尺寸通知、寬度改變、重繪後高度通知，檢查不會循環重繪。
@@ -363,8 +364,8 @@ assert.ok(elements.get('.mechanism').viewBox.startsWith('0 0 400 '));
 notifyResize(400,424);assert.equal(frames.size,0,'只改高度不能再次安排重繪');
 assert.equal(elements.get('rubber-sim-angle-value').value,'0.0°','舊快照不能覆蓋新的初始姿勢');
 for(const [key,value] of Object.entries(screenshotDefaults))near(Number(elements.get('rubber-sim-'+key).value),value,1e-12);
-assert.equal(elements.get('rubber-sim-select-pivot')['aria-pressed'],'true','開啟網頁時集中顯示 P 角度範圍');
-assert.equal(elements.get('rubber-sim-pivot-controls').hidden,false);
+assert.equal(elements.get('rubber-sim-component').value,'crank','開啟網頁時集中曲柄試動');
+assert.equal(elements.get('rubber-sim-crank-controls').hidden,false);
 assert.equal(elements.get('rubber-sim-joint-controls').hidden,true);
 for(const key of ['rotationMin','rotationMax','angle']){const slider=elements.get('rubber-sim-'+key);assert.equal(Number(slider.min),-50);assert.equal(Number(slider.max),50);}
 assert.ok(!elements.get('.mechanism').content.includes('data-control='),'載入時不能長期顯示藍色提示');
@@ -399,10 +400,10 @@ assert.ok(elements.get('.mechanism').content.includes('data-context="fixed" opac
 assert.ok(elements.get('.mechanism').content.includes('data-context="rubber" opacity="0.55"'));
 assert.ok(!elements.get('.mechanism').content.includes('rubber-sim-force-arrow'),'移除持續顯示的拉力箭嘴');
 assert.ok(!elements.has('rubber-sim-baseX')&&!elements.has('rubber-sim-baseY'));
-elements.get('rubber-sim-select-hook').events.get('click')();
+elements.get('rubber-sim-component').value='hook';elements.get('rubber-sim-component').events.get('change')();
 assert.equal(elements.get('rubber-sim-hook-controls').hidden,false);
 assert.equal(elements.get('rubber-sim-beam-controls').hidden,true);
-assert.equal(elements.get('rubber-sim-select-hook')['aria-pressed'],'true');
+assert.equal(elements.get('rubber-sim-component').value,'hook');
 for(const [key,coordinate] of [['beamX',1],['beamY',0]]){
   elements.get('rubber-sim-'+key).events.get('focus')();
   const guide=elements.get('.mechanism').content.split(`<g data-control="${key}">`)[1];
@@ -479,6 +480,7 @@ assert.ok(elements.get('rubber-sim-cycle-segments').content.length>0,'分析按�
 near(Number.parseFloat(elements.get('rubber-sim-cycle-marker').style.left),Number(elements.get('rubber-sim-angle').value)+50,1e-9,'分析白線須顯示白棍角度，不能顯示曲柄進度');
 const analysisPanel=elements.get('rubber-sim-cycle-panel'),analysisButton=elements.get('rubber-sim-analyze');
 assert.equal(analysisPanel.open,true,'分析按鈕須即時展開結果');
+assert.ok(elements.get('.mechanism').content.includes('data-white-swept-area='),'開分析時仍須顯示實際掃過區域');
 assert.equal(analysisButton['aria-expanded'],'true');
 assert.equal(elements.get('rubber-sim-cycle-heading').focused,true,'鍵盤焦點須移到分析結果');
 assert.equal(analysisPanel.scrollOptions.block,'nearest','結果須帶入目前視野');
@@ -509,7 +511,7 @@ assert.deepEqual(canvasDrawing(),beforeLimitPreview,'預覽兩個邊界不能移
 assert.equal(pinDrawing(),pinBeforePreview,'預覽白棍邊界不能轉動曲柄');
 near(savedState.modelContent.angle,20,1e-9,'放開滑塊後保留正在預覽的姿勢');
 assert.equal(savedState.modelContent.design.rotationMin,-30);assert.equal(savedState.modelContent.design.rotationMax,20);
-assert.equal(elements.get('rubber-sim-range-window').style.marginInlineStart,'20%');assert.equal(elements.get('rubber-sim-range-window').style.width,'50%');
+assert.ok(elements.get('.mechanism').content.includes('data-edit-handle="rotationMin"')&&elements.get('.mechanism').content.includes('data-edit-handle="rotationMax"'),'上下限須有圖上把手');
 assert.equal(elements.get('rubber-sim-angle').min,-30);assert.equal(elements.get('rubber-sim-angle').max,20);
 const constrainedAngle=elements.get('rubber-sim-angle');constrainedAngle.value='90';constrainedAngle.events.get('input')();
 assert.equal(elements.get('rubber-sim-angle-value').value,'20.0°');
@@ -628,7 +630,7 @@ for(const width of [320,736]){
     for(const match of paths){
       const ends=match[1].match(/^M(.+)L(.+)$/),r=Number(match[2])/2;assert.ok(ends);
       for(const end of ends.slice(1).map(value=>value.split(',').map(Number))){
-        assert.ok(end[0]-r>=-1e-9&&end[0]+r<=svgWidth+1e-9&&end[1]-r>=-1e-9&&end[1]+r<=svgHeight+1e-9,'P 的全程移位及轉動須留在固定視野內');
+        assert.ok(end.every(Number.isFinite),'固定視野中改 P 的座標須保持有效');
       }
     }
     canvasCases++;
@@ -651,7 +653,7 @@ const xSlider=elements.get('rubber-sim-beamX');
 assert.ok(Number(xSlider.value)<210&&Number(xSlider.max)<210,'舊設定及 slider 範圍必須限制在 210 mm 底板內');
 xSlider.events.get('change')();checkAttachments(s.buildGeometry(savedState.modelContent.design));
 checkRubberSvg();
-elements.get('rubber-sim-home').events.get('click')();notifyResize(1200,0);
+elements.get('rubber-sim-home').events.get('click')();elements.get('rubber-sim-fit').events.get('click')();notifyResize(1200,0);
 for(const [id,draw] of [...frames]){frames.delete(id);draw();}
 const desktopCanvas=canvasDrawing();
 assert.ok(Number.parseFloat(desktopCanvas.height)>400,'大視窗的機構圖不再受 400px 高度限制');
@@ -665,7 +667,7 @@ const resizedCanvas=canvasDrawing();pivotSlider.value='10';pivotSlider.events.ge
 assert.deepEqual(canvasDrawing(),resizedCanvas,'放大後調 P 亦不能縮放固定件');
 // 注入四個平板畫布格尺寸，檢查實際繪圖及事件；這不是 Safari／CSS 實機驗收。
 const tabletCases=[];
-for(const [screenWidth,screenHeight,canvasWidth,slotHeight] of [[1180,820,804,560],[1194,834,818,574],[820,1180,780,397],[834,1194,794,404]]){
+for(const [screenWidth,screenHeight,canvasWidth,slotHeight] of [[1180,820,1140,646],[1194,834,1154,660],[820,1180,796,1000],[834,1194,810,1014]]){
   runtime.window.innerWidth=screenWidth;runtime.window.innerHeight=screenHeight;
   viewportLeft=20;viewportTop=160;
   notifyResize(canvasWidth,slotHeight);globals.get('resize')();
@@ -674,7 +676,7 @@ for(const [screenWidth,screenHeight,canvasWidth,slotHeight] of [[1180,820,804,56
   const fixed=canvasDrawing();
   near(Number.parseFloat(fixed.height),slotHeight,1e-9,'平板 SVG 要填滿分配的畫布格');
   assert.equal(Number(fixed.viewBox.split(' ')[3]),slotHeight);
-  assert.ok(/data-crank-center-handle>[\s\S]*?r="22" fill="transparent"/.test(dragSvg.content),'O 的觸控直徑至少 44px');
+  assert.ok(/data-crank-center-handle[^>]*>[\s\S]*?r="22" fill="transparent"/.test(dragSvg.content),'O 的觸控直徑至少 44px');
   for(const angle of [-50,0,50]){
     wholeSlider.value=String(angle);wholeSlider.events.get('input')();
     assert.deepEqual(canvasDrawing(),fixed,'平板調白棍角度不能令固定件縮放或移位');
@@ -753,7 +755,7 @@ for(const [key,value] of Object.entries(customDesign)){
 }
 assert.equal(elements.get('rubber-sim-angle-value').value,'50.0°');
 assert.equal(Number(elements.get('rubber-sim-rotationMin').value),-50);assert.equal(Number(elements.get('rubber-sim-rotationMax').value),50);
-assert.equal(elements.get('rubber-sim-select-pivot')['aria-pressed'],'true');
+assert.equal(elements.get('rubber-sim-component').value,'crank');
 elements.get('rubber-sim-beamX').events.get('change')();
 near(savedState.modelContent.design.pinRadius*2,3,1e-12,'舊初始配置亦須用 3mm 圓銷');
 assert.equal(storageValues.get(initialStorageKey),legacyInitial,'套用尺寸及角度限制不能覆蓋原有保存資料');
@@ -788,6 +790,55 @@ analysisButton.events.get('click')();
 assert.equal(analysisPanel.open,true);assert.ok(elements.get('rubber-sim-status').textContent.includes('P 已到轉角限制'));
 assert.ok(elements.get('rubber-sim-cycle-ranges').content.includes('未到達的角度'));
 assert.deepEqual(movingDrawing().map(m=>m[0]),blockedPose);
+// 圖上拖動與方向鍵直接改設計，數值輸入只是替代途徑。
+const mode=elements.get('rubber-sim-edit-structure');
+mode.checked=false;mode.events.get('change')();
+const clearDesign={...s.designDefaults,crankX:190,crankY:170};
+const loadClear=()=>{storageEvent({modelContent:{version:13,angle:0,crankAngle:90,design:clearDesign}});elements.get('rubber-sim-beamX').events.get('change')();};
+const currentGeometry=()=>s.buildGeometry(savedState.modelContent.design);
+const screenPoint=point=>{
+  const base=canvasDrawing().green[0].match(/d="M([^ ]+) L([^ ]+)/).slice(1).map(p=>p.split(',').map(Number)),scale=(base[1][0]-base[0][0])/210;
+  return [viewportLeft+base[0][0]+point[0]*scale,viewportTop+base[0][1]-point[1]*scale];
+};
+const editPointer=(type,key,point,id=31)=>{
+  const [clientX,clientY]=screenPoint(point);
+  dragSvg.events.get(type)({button:0,pointerId:id,clientX,clientY,target:{closest:selector=>selector==='[data-edit-handle]'?{getAttribute:()=>key}:null},preventDefault(){}});
+};
+const dragPart=(key,from,to)=>{editPointer('pointerdown',key,from);editPointer('pointermove',key,to);editPointer('pointerup',key,to);};
+loadClear();elements.get('rubber-sim-fit').events.get('click')();
+let gui=currentGeometry(),origin=s.along(gui.arms[0],.85),target=s.rotate(origin,20*Math.PI/180,gui.P),fixedGraph=canvasDrawing();
+dragPart('white1',origin,target);near(savedState.modelContent.angle,20,1e-8);
+assert.deepEqual(canvasDrawing(),fixedGraph,'直接拖白棍不能縮放綠色固定件');
+loadClear();gui=currentGeometry();
+const armAxis=Math.atan2(gui.arms[0][1][1]-gui.arms[0][0][1],gui.arms[0][1][0]-gui.arms[0][0][0]);
+const atAngle=degrees=>gui.P.map((v,i)=>v+50*(i?Math.sin(armAxis+degrees*Math.PI/180):Math.cos(armAxis+degrees*Math.PI/180)));
+editPointer('pointerdown','limits',gui.P);assert.ok(dragSvg.content.includes('data-edit-handle="rotationMax"'));
+dragPart('rotationMax',atAngle(50),atAngle(35));near(savedState.modelContent.design.rotationMax,35,1e-8);near(savedState.modelContent.angle,35,1e-8);
+dragPart('rotationMin',atAngle(-50),atAngle(45));near(savedState.modelContent.design.rotationMin,35,1e-8,'下限把手不能跨過上限');
+loadClear();mode.checked=true;mode.events.get('change')();
+gui=currentGeometry();origin=[gui.design.beamX,gui.design.beamY];fixedGraph=canvasDrawing();
+dragPart('beamMove',origin,origin.map((v,i)=>v+(i?7:5)));near(savedState.modelContent.design.beamX,clearDesign.beamX+5,1e-8);near(savedState.modelContent.design.beamY,clearDesign.beamY+7,1e-8);
+assert.equal(canvasDrawing().green[0],fixedGraph.green[0],'移綠棍仍不能移動底板');
+for(const [key,field,armIndex,sign] of [['beamT','beamT',-1,1],['join1','join1',0,1],['white1','pivotT',0,-1],['white2','join2',1,-1]]){
+  loadClear();gui=currentGeometry();const arm=armIndex===-1?gui.beam:gui.arms[armIndex],from=s.along(arm,.6),to=from.map((v,i)=>v+(arm[1][i]-arm[0][i])*.1);
+  dragPart(key,from,to);near(savedState.modelContent.design[field],clearDesign[field]+sign*10,1e-8);
+  checkAttachments(currentGeometry());checkRubberSvg();
+}
+for(const [key,center,from] of [['beamAngle',[clearDesign.beamX,clearDesign.beamY],s.buildGeometry(clearDesign).beam[1]],['hookAngle',s.buildGeometry(clearDesign).glue,s.buildGeometry(clearDesign).glue.map((v,i)=>v+(i?0:20))],['angle2',s.buildGeometry(clearDesign).joint,s.buildGeometry(clearDesign).arms[1][1]]]){
+  loadClear();dragPart(key,from,s.rotate(from,10*Math.PI/180,center));near(savedState.modelContent.design[key],clearDesign[key]+10,1e-8);checkAttachments(currentGeometry());
+}
+const invalidX=elements.get('rubber-sim-beamX'),oldX=savedState.modelContent.design.beamX;
+for(const invalid of ['', 'NaN']){invalidX.value=invalid;invalidX.events.get('input')();invalidX.events.get('change')();near(savedState.modelContent.design.beamX,oldX,1e-12);}
+loadClear();const beforeKeyboard=savedState.modelContent.design.crankX;
+dragSvg.events.get('keydown')({key:'ArrowRight',target:{closest:()=>({getAttribute:()=> 'center'})},preventDefault(){}});
+near(savedState.modelContent.design.crankX,beforeKeyboard+1,1e-8,'O 把手須可用方向鍵操作');
+const toolsElement=elements.get('rubber-sim-tools'),precisionElement=elements.get('rubber-sim-precision');toolsElement.open=precisionElement.open=true;
+elements.get('rubber-arm-simulation').events.get('keydown')({key:'Escape'});assert.equal(toolsElement.open,false);assert.equal(precisionElement.open,false);
+mode.checked=false;mode.events.get('change')();
+loadClear();gui=currentGeometry();origin=s.along(gui.arms[0],.85);editPointer('pointerdown','white1',origin);const initialPose=elements.get('rubber-sim-angle').value;
+editPointer('pointermove','white1',s.rotate(origin,.2,gui.P),32);assert.equal(elements.get('rubber-sim-angle').value,initialPose,'第二隻手指不能接管拖動');editPointer('pointercancel','white1',origin);assert.equal(dragSvg.capturedPointer,undefined);
+// 明確要求置中才改比例，模型本身及保存資料不變。
+const beforeFit=JSON.stringify(savedState.modelContent);elements.get('rubber-sim-fit').events.get('click')();assert.equal(JSON.stringify(savedState.modelContent),beforeFit);
 // 新裝置及失效舊快照會載入共用配置；本機試調仍可保存及重載。
 storageValues.delete(initialStorageKey);storageValues.delete(storageKey);reload();
 function checkPublished(){
@@ -805,5 +856,5 @@ near(savedState.modelContent.crankAngle,-2336.76,1e-9);
 editValue('join1',42);reload();near(Number(elements.get('rubber-sim-join1').value),42,1e-12,'有效本機配置優先於 GitHub 初始配置');
 elements.get('rubber-sim-home').events.get('click')();checkPublished();
 storageValues.set(storageKey,JSON.stringify(initialSaved));reload();checkPublished();
-console.log(JSON.stringify({result:'通過',tabletCases,initialConfiguration:publishedDesign,whiteRodRangeDegrees:[-50,50],whiteSwingDegrees:cycleReport.segments.map(s=>({phase:s.kind,from:s.fromAngle,to:s.toAngle,min:s.minAngle,max:s.maxAngle})),desktopStickPixels,crank:{contactSteps,clearSteps,strokeDegrees:(maxAngle-minAngle)*180/Math.PI,cycleSegments:cycleReport.segments},stickSizeMm:[114,10],baseLengthMm:210,sliders:visibleFields.length+1,geometryVariants:variants.length,attachmentSweep:292,notchSweep,canvasCases,energyDrift,checks:['GitHub 共用配置／新裝置載入／還原／本機試調優先／失效舊快照回退','平板橫直四尺寸／畫布格高度及置中／帶邊距拖 O 推棍／分析不縮放／尺寸通知不循環','原生獨立 HTML／沒有 iframe 或 ChatGPT 依賴／本機配置相容','大視窗圖像放大／高度調整／調 P 時固定件不縮放','曲柄只順時針／連續三圈／逆向手勢及輸入不反轉／拖 O 與高度限制','拖 O 及 X/Y slider 推白棍／大幅移動不穿透／P 擋位停止 O','白棍集中 ±50°／P 面板預設／舊保存角度收窄／雙滑塊預覽／碰擋位時停止','分析按鈕展開結果／焦點與捲動／完成提示／無凹位或擋位亦顯示原因',
-'白棍起止及極值角度／繞 P 掃過實際棍身範圍／回拉與推動分色／分析不改姿勢','曲柄圓周運動／推棍接觸／離開後不拉棍／阻擋 P 時停下','圓銷不穿棍／啟動與暫停／曲柄角度保存','截圖九值初始／還原／新設定保存','舊快照不覆蓋新初始配置','固定視野／P 移位不改變綠色件座標及大小','P 全程移位及旋轉留在畫布內／G 可直接調整','A–B 直線連接／拉力按直線長度','SVG 只含 A、B 兩端／無繞棍路徑','三支長棍同尺寸／底板 210 mm','支架及 slider 設定限制在底板內','上方外沿交點 B／與 J 分開／轉動後保留同一交點','外沿接觸／沒有凹位時停止放手','底板鎖定','slider 與圖形標記同步','部件切換／移位箭嘴／轉角弧線','尺寸通知不循環重繪','本機儲存失敗／損壞資料處理','保存新初始配置／還原及重新載入／試調不覆蓋／失敗保留原值','A 棍與底板上邊凹角／改棍角度重算交界／力矩與能量同步','支架貼住圓頭棍／連接底板','雙棍接合與慣量','力矩／能量／阻尼停定'],settledDegrees:q[0]*180/Math.PI}));
+console.log(JSON.stringify({result:'通過',tabletCases,initialConfiguration:publishedDesign,whiteRodRangeDegrees:[-50,50],whiteSwingDegrees:cycleReport.segments.map(s=>({phase:s.kind,from:s.fromAngle,to:s.toAngle,min:s.minAngle,max:s.maxAngle})),desktopStickPixels,crank:{contactSteps,clearSteps,strokeDegrees:(maxAngle-minAngle)*180/Math.PI,cycleSegments:cycleReport.segments},stickSizeMm:[114,10],baseLengthMm:210,sliders:0,geometryVariants:variants.length,attachmentSweep:292,notchSweep,canvasCases,energyDrift,checks:['零 slider／圖上拖白棍及上下限／G、P、J 滑動／棍端轉角／數值防空白／方向鍵／多指保護／明確置中','GitHub 共用配置／新裝置載入／還原／本機試調優先／失效舊快照回退','平板橫直四尺寸／畫布格高度及置中／帶邊距拖 O 推棍／分析不縮放／尺寸通知不循環','原生獨立 HTML／沒有 iframe 或 ChatGPT 依賴／本機配置相容','大視窗圖像放大／高度調整／調 P 時固定件不縮放','曲柄只順時針／連續三圈／逆向手勢及輸入不反轉／拖 O 與高度限制','拖 O 及 X/Y slider 推白棍／大幅移動不穿透／P 擋位停止 O','白棍集中 ±50°／P 面板預設／舊保存角度收窄／圖上上下限預覽／碰擋位時停止','分析按鈕展開結果／焦點與捲動／完成提示／無凹位或擋位亦顯示原因',
+'白棍起止及極值角度／繞 P 掃過實際棍身範圍／回拉與推動分色／分析不改姿勢','曲柄圓周運動／推棍接觸／離開後不拉棍／阻擋 P 時停下','圓銷不穿棍／啟動與暫停／曲柄角度保存','截圖九值初始／還原／新設定保存','舊快照不覆蓋新初始配置','固定視野／P 移位不改變綠色件座標及大小','P 移位固定視野／明確置中／G 可直接調整','A–B 直線連接／拉力按直線長度','SVG 只含 A、B 兩端／無繞棍路徑','三支長棍同尺寸／底板 210 mm','支架及位置設定限制在底板內','上方外沿交點 B／與 J 分開／轉動後保留同一交點','外沿接觸／沒有凹位時停止放手','底板鎖定','數值與圖形標記同步','部件切換／移位箭嘴／轉角弧線','尺寸通知不循環重繪','本機儲存失敗／損壞資料處理','保存新初始配置／還原及重新載入／試調不覆蓋／失敗保留原值','A 棍與底板上邊凹角／改棍角度重算交界／力矩與能量同步','支架貼住圓頭棍／連接底板','雙棍接合與慣量','力矩／能量／阻尼停定'],settledDegrees:q[0]*180/Math.PI}));
