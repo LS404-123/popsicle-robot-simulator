@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>雪條棍機械人模擬</title>
@@ -53,7 +53,8 @@ h3 { font-size: 1.15rem; }
 .cycle-lane span { position: absolute; height: 100%; min-width: 2px; }
 .cycle-marker { position: absolute; inset-block: -4px; width: 2px; background: var(--foreground); }
 .cycle-axis { display: flex; justify-content: space-between; color: var(--muted-foreground); }
-.cycle-ranges { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 8px 16px; }
+.cycle-ranges { display: grid; gap: 4px; }
+.cycle-ranges dd + dt { margin-top: 12px; }
 .cycle-ranges dd { margin: 0; overflow-wrap: anywhere; }
 [data-phase="contact"] { color: var(--purple); }
 [data-phase="return"] { color: var(--orange); }
@@ -101,7 +102,8 @@ h3 { font-size: 1.15rem; }
 #rubber-sim-focus-hint { padding-top: 20px; border-top: 1px solid var(--border); }
 #rubber-sim-values { color: var(--foreground); }
 .model-notes { margin-top: 8px; color: var(--muted-foreground); }
-.model-notes summary { width: fit-content; padding-block: 8px; }
+.model-notes summary { width: fit-content; min-height: 44px; padding-block: 8px; }
+.model-notes p { margin: 0 0 12px; }
 .model-notes div { max-width: 75ch; margin-top: 8px; }
 @media (min-width: 1600px) { .simulation-layout { grid-template-columns: minmax(0, 1fr) 420px; } .position-controls { padding: 32px; } }
 @media (max-width: 1099px) {
@@ -111,6 +113,51 @@ h3 { font-size: 1.15rem; }
   .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 28px 32px; }
   #rubber-sim-pivot-controls .control-field:first-child { grid-column: 1/-1; }
   #rubber-sim-crank-controls > .text-small { align-self: center; }
+}
+/* 平板工作區：機構圖保持可見，控制區自行捲動。 */
+@media (min-width: 600px) and (max-width: 1366px) {
+  #rubber-arm-simulation {
+    display: grid; grid-template-rows: auto minmax(0, 1fr);
+    height: 100vh; height: 100dvh; min-height: 540px;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .simulation-toolbar { padding: 14px 20px; }
+  h1 { font-size: 1.25rem; }
+  .workbench-heading { gap: 12px 20px; }
+  .viz-controls { gap: 8px; }
+  .rotation-controls { margin-top: 10px; }
+  .rotation-controls #rubber-sim-status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn { min-height: 48px; padding-inline: 14px; }
+  .simulation-layout { grid-template-columns: minmax(0, 1fr) 336px; min-height: 0; }
+  .simulation-preview {
+    grid-template-rows: auto minmax(0, 1fr) 2.75rem;
+    align-content: stretch; gap: 12px; min-height: 0; padding: 16px 20px;
+  }
+  .canvas-viewport { min-width: 0; min-height: 0; }
+  #rubber-sim-values { align-self: center; }
+  .position-controls {
+    gap: 20px; min-height: 0; padding: 20px; border-top: 0; border-left: 1px solid var(--border);
+    overflow-y: auto; overscroll-behavior-y: contain; scroll-padding-block: 20px;
+    scrollbar-color: var(--input) var(--surface);
+  }
+  .component-selector {
+    position: sticky; top: -20px; z-index: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: -20px; padding-block: 20px 12px; background: var(--surface);
+  }
+  .control-stack { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .control-field { gap: 8px; }
+  .form-range, .dual-range { min-height: 48px; }
+  .cycle-analysis { margin-top: 0; padding-top: 12px; }
+  .cycle-analysis summary { width: auto; font-size: 1rem; }
+  .model-notes { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--border); }
+}
+@media (min-width: 600px) and (max-width: 999px) {
+  .simulation-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) minmax(260px, 1fr); }
+  .position-controls { border-left: 0; border-top: 1px solid var(--border); }
+  .component-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .control-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+  .control-stack > .text-small, #rubber-sim-crank-controls > .form-label { grid-column: 1/-1; }
 }
 @media (max-width: 599px) {
   :root { font-size: 16px; }
@@ -122,7 +169,12 @@ h3 { font-size: 1.15rem; }
   .component-selector, .control-stack { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .control-stack { grid-template-columns: minmax(0, 1fr); }
 }
-@media (pointer: coarse) { .form-range, .dual-range { min-height: 44px; } }
+@media (pointer: coarse) {
+  .form-range, .dual-range { min-height: 48px; }
+  .form-range { touch-action: pan-y; }
+  .form-range::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -12px; }
+  .form-range::-moz-range-thumb { width: 28px; height: 28px; }
+}
 </style>
 </head>
 <body>
@@ -141,27 +193,15 @@ h3 { font-size: 1.15rem; }
       <button class="btn" id="rubber-sim-analyze" type="button" aria-controls="rubber-sim-cycle-panel" aria-expanded="false">分析一圈</button>
       <span class="text-small" id="rubber-sim-status" aria-live="polite">待放手 · 慢速 0.25×</span>
     </div>
-      <details class="cycle-analysis" id="rubber-sim-cycle-panel">
-        <summary id="rubber-sim-cycle-heading">白棍繞 P 的角度與掃過範圍</summary>
-        <div class="cycle-content">
-        <p class="text-small text-muted" id="rubber-sim-cycle-note" aria-live="polite">按「分析一圈」計算目前配置。</p>
-        <div class="cycle-track" id="rubber-sim-cycle-track" role="img" aria-label="白棍繞 P 的角度範圍，尚未分析">
-          <div class="cycle-segments" id="rubber-sim-cycle-segments"></div>
-          <div class="cycle-marker" id="rubber-sim-cycle-marker" hidden></div>
-        </div>
-        <div class="cycle-axis text-small tabular-nums" aria-hidden="true"><span>−50°</span><span>−25°</span><span>0°</span><span>25°</span><span>50°</span></div>
-        <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
-        </div>
-      </details>
   </header>
   <div class="simulation-layout">
     <section class="simulation-preview" aria-label="機構預覽">
       <div class="viz-row text-small"><span class="text-muted">固定件</span><span>活動棍 1／2</span><span class="text-muted">橡筋</span><span style="color:var(--purple)">曲柄 O–Q</span></div>
-      <svg class="mechanism" role="img" aria-label="可調位置的雪條棍機構，兩棍固定接合並共同繞樞軸旋轉"></svg>
+      <div class="canvas-viewport" id="rubber-sim-canvas">
+        <svg class="mechanism" role="img" aria-label="可調位置的雪條棍機構，兩棍固定接合並共同繞樞軸旋轉"></svg>
+      </div>
       <div class="tabular-nums text-small" id="rubber-sim-values"></div>
 
-      <div class="text-small text-muted">三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</div>
-  <details class="model-notes"><summary>模擬參數與假設</summary><div class="text-small text-muted">示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</div></details>
     </section>
     <section class="position-controls" aria-labelledby="rubber-sim-settings-heading">
     <div class="component-selector" role="group" aria-label="選擇圖中要調整的部件">
@@ -203,6 +243,19 @@ h3 { font-size: 1.15rem; }
         </div>
       </div>
       <div id="rubber-sim-focus-hint" class="text-small text-muted" aria-live="polite"></div>
+      <details class="cycle-analysis" id="rubber-sim-cycle-panel">
+        <summary id="rubber-sim-cycle-heading">白棍繞 P 的角度與掃過範圍</summary>
+        <div class="cycle-content">
+        <p class="text-small text-muted" id="rubber-sim-cycle-note" aria-live="polite">按「分析一圈」計算目前配置。</p>
+        <div class="cycle-track" id="rubber-sim-cycle-track" role="img" aria-label="白棍繞 P 的角度範圍，尚未分析">
+          <div class="cycle-segments" id="rubber-sim-cycle-segments"></div>
+          <div class="cycle-marker" id="rubber-sim-cycle-marker" hidden></div>
+        </div>
+        <div class="cycle-axis text-small tabular-nums" aria-hidden="true"><span>−50°</span><span>−25°</span><span>0°</span><span>25°</span><span>50°</span></div>
+        <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
+        </div>
+      </details>
+      <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
     </section>
   </div>
 </main>
@@ -493,7 +546,8 @@ h3 { font-size: 1.15rem; }
     return report;
   }
   // END PHYSICS
-  const root=document.getElementById('rubber-arm-simulation'),svg=root.querySelector('.mechanism');
+  const root=document.getElementById('rubber-arm-simulation'),svg=root.querySelector('.mechanism'),canvas=root.querySelector('#rubber-sim-canvas');
+  const tabletLayout=window.matchMedia('(min-width: 600px) and (max-width: 1366px)');
   // 固定畫布座標；載入時預留兩個 P slider 的移動及整組旋轉範圍，之後不再自動置中或縮放。
   let canvasBounds=null,canvasMap=null,crankScreenCenter=[0,0];
   const input=root.querySelector('#rubber-sim-angle'),output=root.querySelector('#rubber-sim-angle-value');
@@ -682,10 +736,11 @@ h3 { font-size: 1.15rem; }
     const {P,arms,beam,base,support,hook}=model,bounds=canvasBounds;
     const width=Math.max(280,svg.getBoundingClientRect().width),spanX=bounds[0][1]-bounds[0][0],spanY=bounds[1][1]-bounds[1][0];
     // 只在視窗尺寸改變時調整畫面比例；P、曲柄及接合位置不會觸發自動縮放。
-    const availableHeight=Math.max(560,window.innerHeight-160);
-    const scale=Math.min((width-64)/spanX,(availableHeight-48)/spanY),height=spanY*scale+48;
-    const point=q=>[(width-spanX*scale)/2+(q[0]-bounds[0][0])*scale,24+(bounds[1][1]-q[1])*scale];
-    canvasMap={scale,left:(width-spanX*scale)/2,minX:bounds[0][0],maxY:bounds[1][1]};
+    const availableHeight=tabletLayout.matches?Math.max(96,canvas.getBoundingClientRect().height):Math.max(560,window.innerHeight-160);
+    const scale=Math.min((width-64)/spanX,(availableHeight-48)/spanY),height=tabletLayout.matches?availableHeight:spanY*scale+48;
+    const top=(height-spanY*scale)/2;
+    const point=q=>[(width-spanX*scale)/2+(q[0]-bounds[0][0])*scale,top+(bounds[1][1]-q[1])*scale];
+    canvasMap={scale,left:(width-spanX*scale)/2,top,minX:bounds[0][0],maxY:bounds[1][1]};
     const path=(pts,color,stroke=3,dash='')=>`<path d="${pts.map((q,i)=>`${i?'L':'M'}${point(q).join(',')}`).join(' ')}" fill="none" stroke="${color}" stroke-width="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
     const label=(q,text,ox=8,oy=-8,primary=false)=>{const v=point(q);return`<text${primary?' class="primary-label"':''} x="${v[0]+ox}" y="${v[1]+oy}">${text}</text>`;};
     const circle=(q,color)=>{const v=point(q);return`<circle cx="${v[0]}" cy="${v[1]}" r="3.5" fill="${color}"/>`;};
@@ -747,7 +802,7 @@ h3 { font-size: 1.15rem; }
       label(P,'P',-20,-10)+label(P,`${(state[0]*180/Math.PI).toFixed(1)}°`,12,25,true)+label(f.a,'A',0,-14)+label(joint,'J',-16,16)+(model.binding?label(f.b,'B',10,-10):'')+label(pin,'Q',10,-10,true)+
       moving.map((arm,i)=>label(along(arm,0.15),String(i+1),-16,8,true)).join('')+
       `<circle data-crank-handle class="cursor-interaction" cx="${tip[0]}" cy="${tip[1]}" r="22" fill="transparent"/>`+
-      `<g data-crank-center-handle>${label(model.crankCenter,'O',-18,16,true)}<circle cx="${o[0]}" cy="${o[1]}" r="12" fill="transparent"/></g>`+
+      `<g data-crank-center-handle>${label(model.crankCenter,'O',-18,16,true)}<circle cx="${o[0]}" cy="${o[1]}" r="22" fill="transparent"/></g>`+
       (guideVisible?`<g data-control="${activeControl}">${guide}</g>`:'');
     const limitPreview=!running&&['rotationMin','rotationMax'].includes(activeControl);
     const shownAngle=rotationBounds(model)[0]===-Infinity&&!limitPreview?wrapped(state[0]):state[0]/Math.PI*180;
@@ -813,7 +868,7 @@ h3 { font-size: 1.15rem; }
   }
   function pointerWorld(event){
     const rect=svg.getBoundingClientRect();
-    return [canvasMap.minX+(event.clientX-rect.left-canvasMap.left)/canvasMap.scale,canvasMap.maxY-(event.clientY-rect.top-24)/canvasMap.scale];
+    return [canvasMap.minX+(event.clientX-rect.left-canvasMap.left)/canvasMap.scale,canvasMap.maxY-(event.clientY-rect.top-canvasMap.top)/canvasMap.scale];
   }
   svg.addEventListener('pointerdown',event=>{
     if(dragInfo||event.button!==0)return;
@@ -880,14 +935,14 @@ h3 { font-size: 1.15rem; }
   restore(loadInitial()||loadSaved());chooseControl('rotationMin');
   runCycleAnalysis();
   draw();
-  // 只跟隨寬度；下一個畫格才寫入尺寸，避免 ResizeObserver 重繪自己的高度。
+  // 平板由獨立畫布格決定高度；下一畫格才重繪，避免觀察 SVG 自己寫入的高度。
   window.addEventListener('resize',()=>requestAnimationFrame(draw));
-  let observedWidth=svg.getBoundingClientRect().width;
+  let observedWidth=canvas.getBoundingClientRect().width,observedHeight=canvas.getBoundingClientRect().height;
   new ResizeObserver(([entry])=>{
-    const width=entry.contentRect.width;
-    if(Math.abs(width-observedWidth)<0.5)return;
-    observedWidth=width;requestAnimationFrame(draw);
-  }).observe(svg);
+    const {width,height}=entry.contentRect;
+    if(Math.abs(width-observedWidth)<0.5&&(!tabletLayout.matches||Math.abs(height-observedHeight)<0.5))return;
+    observedWidth=width;observedHeight=height;requestAnimationFrame(draw);
+  }).observe(canvas);
 })();
 </script>
 </body>
