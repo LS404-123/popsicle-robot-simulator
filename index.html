@@ -230,7 +230,7 @@ h3 { font-size: 1.15rem; }
       <div class="control-stack" id="rubber-sim-crank-controls" hidden>
         <label class="form-label" for="rubber-sim-crankAngle">順時針累計轉角（°）<input class="form-control" id="rubber-sim-crankAngle" type="number" min="0" step="1" value="0" aria-describedby="rubber-sim-crank-hint"></label>
         <div id="rubber-sim-crank-hint" class="text-small text-muted">拖 O 或調位置 slider，Q 碰到白棍會推動佢繞 P 轉；受阻時 O 停下。按住 Q 可順時針連續轉動，快慢由你控制。</div>
-        <div class="text-small text-muted">O–Q 固定 21 mm；O 距底板上邊至少 21 mm。</div>
+        <div class="text-small text-muted">O–Q 固定 21 mm；Q 直徑 3 mm；O 距底板上邊至少 21 mm。</div>
       </div>
       <div class="control-stack" id="rubber-sim-whole-controls" hidden>
         <div class="control-field" id="rubber-sim-angle-field">
@@ -255,7 +255,7 @@ h3 { font-size: 1.15rem; }
         <dl class="cycle-ranges text-small tabular-nums" id="rubber-sim-cycle-ranges"></dl>
         </div>
       </details>
-      <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
+      <details class="model-notes"><summary>尺寸與模擬假設</summary><div class="text-small text-muted"><p>三支長棍均為 114 × 10 mm，底板長 210 mm。橡筋 A 端卡在斜棍與底板上邊的左側凹角，B 端卡在兩支白棍的上方外沿交點。</p><p>示例：兩棍共 40 g；橡筋原長 100 mm、硬度 100 N/m；阻尼 0.0003 N·m·s。A 端卡在斜棍外沿與底板上邊的左側凹角；改斜棍角度時重新計算交界。未計繞棍部分的長度及摩擦。B 端保持卡在凹位。曲柄只作順時針旋轉，可手動拖 Q，或自動旋轉，預設每分鐘 30 轉。O–Q 固定 21 mm；O 距綠色底板上邊至少 21 mm。P 的角度邊界視為不反彈的硬擋位。調整 O 時暫停時間積分，Q 仍按移動路徑推動白棍；碰到角度擋位或無法避讓時 O 停下。直徑 3 mm 的圓銷 Q 與兩棍外沿無摩擦、不反彈接觸，離開後不再施力。曲柄桿身位於另一層；未計桿身、固定件及橡筋的碰撞。</p></div></details>
     </section>
   </div>
 </main>
@@ -286,7 +286,7 @@ h3 { font-size: 1.15rem; }
       ['crankX','O 圓心左右位置',0,210,0.1,88,'mm'],
       ['crankY','O 圓心上下位置',24,180,0.1,62,'mm'],
       ['crankLength','曲柄 O–Q 長度',21,21,0.1,21,'mm'],
-      ['pinRadius','Q 圓銷半徑',1,8,0.1,3,'mm'],
+      ['pinRadius','Q 圓銷半徑',1.5,1.5,0.1,1.5,'mm'],
       ['crankAngle','曲柄起始／目前角度',-180,180,0.1,90,'°'],
       ['crankRPM','順時針轉速',-60,60,0.1,30,'rpm']
     ]

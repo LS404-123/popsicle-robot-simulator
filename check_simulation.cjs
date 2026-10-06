@@ -65,6 +65,7 @@ function checkAttachments(g){
   assert.deepEqual(Array.from(g.base[0]),[0,0],'底板必須固定在原 DXF 的位置');
   near(g.base[1][0]-g.base[0][0],210,1e-9);
   near(g.design.crankLength,21,1e-12);
+  near(g.design.pinRadius*2,3,1e-12);
   assert.ok(g.crankCenter[1]-g.base[2][1]>=21,'O 距綠色底板上邊至少 21mm');
   near(distance(s.crankPin(0,g),g.crankCenter),21,1e-9);
   near(distance(...g.beam),114,1e-9);
@@ -119,8 +120,8 @@ const unrestricted=g=>({...g,design:{...g.design,rotationMin:-180,rotationMax:18
 assert.equal(g0.design.rotationMin,-50);assert.equal(g0.design.rotationMax,50);
 const focusedBounds=s.rotationBounds(g0);near(focusedBounds[0],-50*Math.PI/180,1e-12);near(focusedBounds[1],50*Math.PI/180,1e-12);
 for(const sign of [-1,1]){const limited=s.limitRotation([sign*Math.PI,sign*2],g0);near(limited[0],sign*50*Math.PI/180,1e-12);assert.equal(limited[1],0);}
-const oldCrank=s.buildGeometry({...s.designDefaults,crankLength:60,crankY:-100,crankRPM:-45});
-near(oldCrank.design.crankLength,21,1e-12);near(oldCrank.crankCenter[1]-oldCrank.base[2][1],21,1e-12);assert.equal(oldCrank.design.crankRPM,45);
+const oldCrank=s.buildGeometry({...s.designDefaults,crankLength:60,pinRadius:3,crankY:-100,crankRPM:-45});
+near(oldCrank.design.crankLength,21,1e-12);near(oldCrank.design.pinRadius,1.5,1e-12);near(oldCrank.crankCenter[1]-oldCrank.base[2][1],21,1e-12);assert.equal(oldCrank.design.crankRPM,45);
 const oldBinding=s.buildGeometry(s.migrateDesign({...s.designDefaults,bandArm:2,bandT:95,bandSide:4},5));
 near(distance(s.forces(0,0,oldBinding).b,oldBinding.binding.notch),0,1e-9);
 assert.ok(!s.fields.some(([key])=>key.startsWith('band')),'橡筋端必須卡在外沿凹位，不能另行移位');
@@ -150,8 +151,10 @@ assert.ok(Math.abs(q[1])<0.001&&Math.abs(s.forces(...q).acceleration)<0.01,'需�
 // 圓銷依實際圓頭棍外沿作單向接觸；完整循環用明確無擋位的物理測試配置。
 for(const phase of [0,Math.PI/2,Math.PI,Math.PI*3/2])near(distance(s.crankPin(phase),g0.crankCenter),s.designDefaults.crankLength,1e-9);
 const upper=s.along(g0.arms[0],0.85),unit=g0.arms[0][1].map((v,i)=>(v-g0.arms[0][0][i])/114),normal=[-unit[1],unit[0]];
-const contactPin=upper.map((v,i)=>v+normal[i]*8),contactGeometry={...g0,crankCenter:[contactPin[0]-5,contactPin[1]],design:{...g0.design,crankLength:5,pinRadius:3}};
+const contactPin=upper.map((v,i)=>v+normal[i]*6.5),contactGeometry={...g0,crankCenter:[contactPin[0]-5,contactPin[1]],design:{...g0.design,crankLength:5}};
 const edge=s.pinContacts(0,0,contactGeometry)[0];near(edge.gap,0,1e-9);
+const clearPin={...contactGeometry,crankCenter:contactGeometry.crankCenter.map((v,i)=>v+normal[i]*.5)};
+near(s.pinContacts(0,0,clearPin)[0].gap,.5,1e-9);
 const pushed=s.resolvePin([0,0],0,1,contactGeometry);assert.equal(pushed.jammed,false);near(pushed.state[1],normal[1]*5/edge.lever,1e-9);
 near(s.resolvePin([0,0],0,-1,contactGeometry).state[1],0,1e-12,'圓銷離開時不能拉住白棍');
 // O 平移亦須經過接觸路徑，推動白棍；離開及受阻時保留最後可行位置。
@@ -229,7 +232,13 @@ const cycleReport=s.analyzeCrankCycle(analysisState,Math.PI/2,g0);
 assert.equal(cycleReport.complete,true);near(cycleReport.degrees,360,1e-8);
 assert.deepEqual(analysisState,[0,0]);assert.equal(JSON.stringify(g0),analysisGeometry,'分析不能移動實際機構');
 assert.equal(cycleReport.segments[0].kind,'return');near(cycleReport.segments[0].from,0,1e-12);
-near(cycleReport.segments[0].to,8.3,.2);
+let probeState=[0,0],probePhase=Math.PI/2,firstContact=null;
+for(let i=0;i<2000;i++){
+  const from=(Math.PI/2-probePhase)*180/Math.PI,result=s.advanceMechanism(probeState,probePhase,.001,g0,omega);
+  probeState=result.state;probePhase=result.phase;
+  if(result.touching){firstContact=from;break;}
+}
+assert.notEqual(firstContact,null);near(cycleReport.segments[0].to,firstContact,1e-8);
 assert.ok(cycleReport.segments.some(s=>s.kind==='contact'&&s.to-s.from>340));
 let end=0;
 for(const segment of cycleReport.segments){near(segment.from,end,1e-8);assert.ok(segment.to>segment.from);end=segment.to;}
@@ -544,7 +553,7 @@ gesture('pointerup',bearing);elements.get('rubber-sim-home').events.get('click')
 storageEvent({modelContent:{version:13,angle:0,crankAngle:90,design:{...s.designDefaults,crankX:190,crankY:170}}});
 const beforeMoveO=canvasDrawing();
 const originalO=dragSvg.content.match(/<circle data-crank-center cx="([^"]+)" cy="([^"]+)"/).slice(1).map(Number);
-const pixelsPerMm=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/3;
+const pixelsPerMm=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/s.designDefaults.pinRadius;
 const moveO=(type,x,y,id=3)=>dragSvg.events.get(type)({button:0,pointerId:id,clientX:originalO[0]+(x-190)*pixelsPerMm+4,clientY:originalO[1]-(y-170)*pixelsPerMm+2,target:{closest:selector=>selector==='[data-crank-center-handle]'?{}:null},preventDefault(){}});
 drive.events.get('click')();assert.ok(frames.size>0);
 moveO('pointerdown',190,170);assert.equal(dragSvg.capturedPointer,3);assert.equal(frames.size,0,'拖動 O 時先暫停曲柄');
@@ -562,7 +571,7 @@ near(savedState.modelContent.design.crankX,200,1e-6);near(savedState.modelConten
 
 const pointerO=(type,point)=>{
   const origin=canvasDrawing().green[0].match(/d="M([^ ]+)/)[1].split(',').map(Number);
-  const scale=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/3;
+  const scale=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/s.designDefaults.pinRadius;
   dragSvg.events.get(type)({button:0,pointerId:9,clientX:viewportLeft+origin[0]+point[0]*scale+4,clientY:viewportTop+origin[1]-point[1]*scale+2,target:{closest:selector=>selector==='[data-crank-center-handle]'?{}:null},preventDefault(){}});
 };
 storageEvent({modelContent:{version:13,angle:0,crankAngle:90,design:slideGeometry.design}});
@@ -730,8 +739,8 @@ near(Number(elements.get('rubber-sim-hookAngle').value),120,1e-12);assert.equal(
 elements.get('rubber-sim-home').events.get('click')();
 for(const [key,value] of Object.entries(screenshotDefaults))near(Number(elements.get(`rubber-sim-${key}`).value),value,1e-12);
 assert.equal(elements.get('rubber-sim-angle-value').value,'0.0°','沒有有效初始配置時仍可還原原始預設');
-// 更新前的初始配置要保留部件尺寸及位置，只收窄越界角度。
-const legacyInitial=JSON.stringify({modelContent:{version:13,angle:90,crankAngle:-20,design:{...customDesign,rotationMin:-180,rotationMax:180}},privateContent:{control:'join1'}});
+// 舊初始配置保留位置，並套用最新的角度限制及 Q 直徑。
+const legacyInitial=JSON.stringify({modelContent:{version:13,angle:90,crankAngle:-20,design:{...customDesign,pinRadius:3,rotationMin:-180,rotationMax:180}},privateContent:{control:'join1'}});
 storageValues.set(initialStorageKey,legacyInitial);reload();
 for(const [key,value] of Object.entries(customDesign)){
   const slider=elements.get(`rubber-sim-${key}`);if(slider&&!['rotationMin','rotationMax','crankAngle'].includes(key))near(Number(slider.value),value,1e-12);
@@ -739,14 +748,16 @@ for(const [key,value] of Object.entries(customDesign)){
 assert.equal(elements.get('rubber-sim-angle-value').value,'50.0°');
 assert.equal(Number(elements.get('rubber-sim-rotationMin').value),-50);assert.equal(Number(elements.get('rubber-sim-rotationMax').value),50);
 assert.equal(elements.get('rubber-sim-select-pivot')['aria-pressed'],'true');
-assert.equal(storageValues.get(initialStorageKey),legacyInitial,'收窄角度不能覆蓋原有保存資料');
+elements.get('rubber-sim-beamX').events.get('change')();
+near(savedState.modelContent.design.pinRadius*2,3,1e-12,'舊初始配置亦須用 3mm 圓銷');
+assert.equal(storageValues.get(initialStorageKey),legacyInitial,'套用尺寸及角度限制不能覆蓋原有保存資料');
 elements.get('rubber-sim-home').events.get('click')();assert.equal(elements.get('rubber-sim-angle-value').value,'50.0°');
 storageValues.delete(initialStorageKey);elements.get('rubber-sim-home').events.get('click')();
 // 用真正的 Q 指標事件比較停住／轉動，排除白棍只因橡筋自行轉動而造成的假通過。
 function manualContactTurn(degreesPerStep,turn){
   elements.get('rubber-sim-home').events.get('click')();
   const fixed=canvasDrawing();center=dragSvg.content.match(/<circle data-crank-center cx="([^"]+)" cy="([^"]+)"/).slice(1).map(Number);
-  const radius=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/3*21;
+  const radius=Number(dragSvg.content.match(/<circle data-crank-pin[^>]* r="([^"]+)"/)[1])/s.designDefaults.pinRadius*21;
   const pointer=(type,bearing)=>dragSvg.events.get(type)({button:0,pointerId:7,clientX:center[0]+radius*Math.cos(bearing),clientY:center[1]-radius*Math.sin(bearing),target:{closest:selector=>selector==='[data-crank-handle]'?{}:null},preventDefault(){}});
   pointer('pointerdown',Math.PI/2);runDragFrame();let contacts=0;
   for(let i=1;i<=90/degreesPerStep;i++){
